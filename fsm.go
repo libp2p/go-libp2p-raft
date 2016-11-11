@@ -1,0 +1,152 @@
+package libp2praft
+
+import (
+	"errors"
+	"io"
+	"sync"
+
+	"github.com/hashicorp/raft"
+	consensus "github.com/libp2p/go-libp2p-consensus"
+	codec "github.com/ugorji/go/codec"
+)
+
+// fsm implements a minimal raft.FSM that holds a generic consensus.State
+// so it can be serialized/deserialized, snappshotted and restored.
+// fsm is used by Consensus to keep track of the state of the system
+type fsm struct {
+	state consensus.State
+	valid bool
+	mux   sync.Mutex
+}
+
+// encodeState serializes a state
+func encodeState(state consensus.State) ([]byte, error) {
+	var buf []byte
+	enc := codec.NewEncoderBytes(&buf, &codec.MsgpackHandle{})
+	if err := enc.Encode(state); err != nil {
+		return nil, err
+	}
+	// enc := msgpack.Multicodec().NewEncoder(buffer)
+	// if err := enc.Encode(state); err != nil {
+	// 	return nil, err
+	// }
+	return buf, nil
+}
+
+// decodeState deserializes a state
+func decodeState(bs []byte, state *consensus.State) error {
+	dec := codec.NewDecoderBytes(bs, &codec.MsgpackHandle{})
+
+	if err := dec.Decode(state); err != nil {
+		return err
+	}
+
+	// buffer := bytes.NewBuffer(bs)
+	// dec := msgpack.MultiCodec().NewDecoder(buffer)
+	// if err := dec.Decode(state); err != nil {
+	// 	return err
+	// }
+	return nil
+}
+
+// Returns a new state which is a copy of the given one.
+// In order to copy it it serializes and deserializes it into a new
+// variable.
+func dupState(state consensus.State) (consensus.State, error) {
+	newState := state
+
+	// We encode and redecode on the new object
+	bs, err := encodeState(state)
+	if err != nil {
+		return nil, err
+	}
+
+	err = decodeState(bs, &newState)
+	if err != nil {
+		return nil, err
+	}
+
+	return newState, nil
+}
+
+// Apply applies deserializes a Raft log entry and saves it as our new state.
+// It returns a future which is then returned by Raft.Apply() if the Raft node
+// that made the call was the leader. The future is a copy of the fsm state
+// so that the fsm suffers no side effects from external modifications.
+func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
+	fsm.mux.Lock()
+	defer fsm.mux.Unlock()
+
+	if err := decodeState(rlog.Data, &fsm.state); err != nil {
+		log.Error("error decoding state: ", err)
+		return nil
+	}
+
+	future, err := dupState(fsm.state)
+	if err != nil {
+		log.Error("error duplicating state to return it as future:", err)
+		return nil
+	}
+	fsm.valid = true
+	return future
+}
+
+func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
+	fsm.mux.Lock()
+	defer fsm.mux.Unlock()
+
+	// Encode the state
+	bytes, err := encodeState(fsm.state)
+	if err != nil {
+		return nil, err
+	}
+
+	var snap fsmSnapshot = bytes
+	return snap, nil
+}
+
+func (fsm *fsm) Restore(reader io.ReadCloser) error {
+	var snapBytes []byte
+	_, err := reader.Read(snapBytes)
+	if err != nil {
+		return err
+	}
+
+	fsm.mux.Lock()
+	defer fsm.mux.Unlock()
+	if err := decodeState(snapBytes, &fsm.state); err != nil {
+		return err
+	}
+	fsm.valid = true
+	return nil
+}
+
+// State returns a copy of the state so that the fsm cannot be
+// messed with if the state is modified outside
+func (fsm *fsm) State() (consensus.State, error) {
+	fsm.mux.Lock()
+	defer fsm.mux.Unlock()
+	if fsm.valid != true {
+		return nil, errors.New("no state has been agreed upon yet")
+	}
+	return dupState(fsm.state)
+}
+
+// fsmSnapshot implements the hashicorp/raft interface and allows to serialize a
+// state into a byte slice that can be used as a snapshot of the system.
+type fsmSnapshot []byte
+
+// Persist writes the snapshot (a serialized state) to a raft.SnapshotSink
+func (fsms fsmSnapshot) Persist(sink raft.SnapshotSink) error {
+	_, err := sink.Write(fsms)
+	if err != nil {
+		return err
+	}
+	if err := sink.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (fsms fsmSnapshot) Release() {
+}
