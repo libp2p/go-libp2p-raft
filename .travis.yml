@@ -1,12 +1,16 @@
 language: go
 go:
-  - '1.7'
-
+- '1.7'
 install:
-  - go get github.com/hashicorp/raft
-  - go get github.com/ugorji/go/codec
-  - go get github.com/hashicorp/raft-boltdb
-  - make all
-
+- go get github.com/hashicorp/raft
+- go get github.com/ugorji/go/codec
+- go get github.com/hashicorp/raft-boltdb
+- go get golang.org/x/tools/cmd/cover
+- go get github.com/mattn/goveralls
+- make all
 script:
-  - make test
+- make test
+- "$GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN"
+env:
+  global:
+    secure: k23dEOtGutVwV+PRrZKxcdaMeG6x6tPTMpYms+c1Y4FuiZP0FORHkaQAO3dIoptmcwLsb46wugSM2rSKaSbViqSUseiqdfOFkDcgP3QQNY4mTaYKl9VVQMAphMVfOtcDQ85Ho7eTmgn4StXGFajDkdTBY3jeZjIAIYqoPE2Wb/2dAnSav9KkgFU6BBAT4s6Ez+xPLNANGbNvoaBwOiun6cG7y+3/o9CGOVZ1LBisUzkbmZUMM5K0DYyAyLnl6/i7fYagdfBwQovKdf2TFZdhibJEAMo3yevsseosavZBBDCkVORPKt2vrfyURh+Sje9NwAf8ussyJNitf+CtlYPRiFQOYl7AqHffpebOtIOMRLlzk3yqf5cXR32Gv2ScqfJ+oRwIG7bGb5qH3jkv0l9PYN8EdHdH/RG+F6w4mDNy5/VTz7TDLUA47ZpvFlB6dG9fguSoXDZb5m4KaZBOV2x/Q2pSyxihjgCU2Dm0m2vnJKWHFycwJ1Ho5O8PSuMGxGlhWC/1QZsGNY+jx4LrpTTBS9bTubFqNpkoakV0oYE55lLzYj7JAVWMw9pkzyqzsEm66G4S385T7hDhtSNpCaasdzpu1zQQzxjyaaPYcSJYMbdEBxkDIMaW32vbLDoAQFjxkW6tEpWBypE7OxXwyHkkWQtgq+bQ/rh1tmUG2MpXwpA=

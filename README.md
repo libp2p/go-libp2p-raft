@@ -9,7 +9,7 @@
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 [![GoDoc](https://godoc.org/github.com/libp2p/go-libp2p-raft?status.svg)](https://godoc.org/github.com/libp2p/go-libp2p-raft)
 [![Build Status](https://travis-ci.org/libp2p/go-libp2p-raft.svg?branch=master)](https://travis-ci.org/libp2p/go-libp2p-raft)
-
+[![Coverage Status](https://coveralls.io/repos/github/libp2p/go-libp2p-raft/badge.svg?branch=master)](https://coveralls.io/github/libp2p/go-libp2p-raft?branch=master)
 
 > A LibP2P wrapper for hashicorp/raft implementation.
 

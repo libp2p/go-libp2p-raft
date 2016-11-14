@@ -8,6 +8,6 @@ deps: gx
 	gx-go rewrite
 
 test: deps
-	go test -v .
+	go test -v -covermode count -coverprofile=coverage.out .
 publish:
 	gx-go rewrite --undo
