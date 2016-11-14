@@ -5,6 +5,7 @@ go:
 install:
   - go get github.com/hashicorp/raft
   - go get github.com/ugorji/go/codec
+  - go get github.com/hashicorp/raft-boltdb
   - make all
 
 script:
