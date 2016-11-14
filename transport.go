@@ -536,7 +536,7 @@ func (t *Libp2pTransport) Close() error {
 	return nil
 }
 
-// OpenConns() opens connections to all known peers. It is
+// OpenConns opens connections to all known peers. It is
 // not necessary to use it, as connections are opened on
 // demand when creating streams, but is useful to warm
 // up the transports before letting raft use them and checking
