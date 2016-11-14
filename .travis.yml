@@ -1,0 +1,9 @@
+language: go
+go:
+  - '1.7'
+
+install:
+  - make all
+
+script:
+  - make test
