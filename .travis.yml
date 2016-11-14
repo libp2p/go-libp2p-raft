@@ -3,6 +3,8 @@ go:
   - '1.7'
 
 install:
+  - go get github.com/hashicorp/raft
+  - go get github.com/ugorji/go/codec
   - make all
 
 script:
