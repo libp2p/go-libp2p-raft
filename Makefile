@@ -8,6 +8,6 @@ deps: gx
 	gx-go rewrite
 
 test: deps
-
+	go test -v .
 publish:
 	gx-go rewrite --undo
