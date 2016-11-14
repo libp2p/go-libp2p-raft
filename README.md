@@ -3,7 +3,12 @@
 **CURRENTLY WORK IN PROGRESS**
 
 
+[![](https://img.shields.io/badge/made%20by-Protocol%20Labs-blue.svg?style=flat-square)](http://ipn.io)
+[![](https://img.shields.io/badge/project-IPFS-blue.svg?style=flat-square)](http://ipfs.io/)
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+[![GoDoc](https://godoc.org/github.com/libp2p/go-libp2p-raft?status.svg)](https://godoc.org/github.com/libp2p/go-libp2p-raft)
+[![Build Status](https://travis-ci.org/libp2p/go-libp2p-raft.svg?branch=master)](https://travis-ci.org/libp2p/go-libp2p-raft)
+
 
 > A LibP2P wrapper for hashicorp/raft implementation.
 
@@ -53,13 +58,8 @@ You can use the [Gx](https://github.com/whyrusleeping/gx)-pinned dependencies ru
 
 ## Usage
 
-The documentation for this module can be found in [godoc.org/github.com/libp2p/go-libp2p-raft](https://godoc.org/github.com/libp2p/go-libp2p-raft).
+The documentation and examples for this module can be found in [godoc.org/github.com/libp2p/go-libp2p-raft](https://godoc.org/github.com/libp2p/go-libp2p-raft).
 
-Here is an example:
-
-```go
-var todo = "todo"
-```
 
 ## Contribute
 
