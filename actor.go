@@ -18,13 +18,24 @@ type Actor struct {
 	Raft *raft.Raft
 }
 
+// NewActor returns a new actor given a hashicorp/raft node.
+func NewActor(r *raft.Raft) *Actor {
+	return &Actor{
+		Raft: r,
+	}
+}
+
 // SetState attempts to set the state of the cluster to the state
-// represented by the given Node. It will block until a state is
-// agreed upon, and will return then the new state.
+// represented by the given Node. It will block until the state is
+// commited, and will then return then the new state.
+//
+// This does not mean that the new state is already available in all
+// the nodes in the cluster, but that it will be at some point because
+// it is part of the authoritative log.
 //
 // Only the Raft leader can set the state. Otherwise, an error will
 // be returned.
-func (actor Actor) SetState(newState consensus.State) (consensus.State, error) {
+func (actor *Actor) SetState(newState consensus.State) (consensus.State, error) {
 	//log.Debug("Actor is applying state")
 	if actor.Raft == nil {
 		return nil, errors.New("this actor does not have a raft instance")
@@ -41,8 +52,8 @@ func (actor Actor) SetState(newState consensus.State) (consensus.State, error) {
 
 	applyFuture := actor.Raft.Apply(bs, SetStateTimeout)
 
-	// Error blocks until apply future has returned
-	// which would mean the state has been agreed upon?
+	// Error blocks until apply future is "considered commited"
+	// which means "commited to the local FSM"
 	err = applyFuture.Error()
 
 	futureResp := applyFuture.Response()
@@ -50,9 +61,10 @@ func (actor Actor) SetState(newState consensus.State) (consensus.State, error) {
 	return futureResp, nil
 }
 
-// NewActor returns a new actor given a hashicorp/raft node.
-func NewActor(r *raft.Raft) Actor {
-	return Actor{
-		Raft: r,
+// IsLeader returns of the current actor is Raft leader
+func (actor *Actor) IsLeader() bool {
+	if actor.Raft != nil {
+		return actor.Raft.State() == raft.Leader
 	}
+	return false
 }

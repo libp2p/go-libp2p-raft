@@ -30,7 +30,7 @@ func (c *Consensus) SetActor(actor consensus.Actor) {
 	c.actor = actor
 }
 
-// GetCurrentState returns the current state of the system.
+// GetCurrentState returns the upon-agreed state of the system.
 func (c *Consensus) GetCurrentState() (consensus.State, error) {
 	return c.State()
 }

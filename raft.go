@@ -7,5 +7,5 @@ import (
 )
 
 var (
-	log = logging.Logger("libp2p-raft")
+	logger = logging.Logger("libp2p-raft")
 )

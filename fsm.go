@@ -78,13 +78,13 @@ func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 	defer fsm.mux.Unlock()
 
 	if err := decodeState(rlog.Data, &fsm.state); err != nil {
-		log.Error("error decoding state: ", err)
+		logger.Error("error decoding state: ", err)
 		return nil
 	}
 
 	future, err := dupState(fsm.state)
 	if err != nil {
-		log.Error("error duplicating state to return it as future:", err)
+		logger.Error("error duplicating state to return it as future:", err)
 		return nil
 	}
 	fsm.valid = true

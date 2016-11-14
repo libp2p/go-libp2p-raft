@@ -161,7 +161,7 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 		defer s.Close()
 		err := t.streamHandler(wrap)
 		if err != nil {
-			log.Error(err)
+			logger.Errorf("%s: %s", t.LocalAddr(), err)
 		}
 
 	})
@@ -172,10 +172,12 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 		for {
 			err := t.streamHandler(wrap)
 			if err == io.EOF {
+				logger.Errorf("%s: EOF while handling pipeline stream", t.LocalAddr())
 				s.Close()
+				break
 			}
 			if err != nil {
-				log.Error(err)
+				logger.Errorf("%s: %s", t.LocalAddr(), err)
 				break
 			}
 		}
@@ -188,7 +190,7 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 // RPC in the consumeCh for Raft and send a response.
 // It is mostly copied from NetworkTransport.handleCommand()
 func (t *Libp2pTransport) streamHandler(wrap *streamWrap) error {
-	log.Debug("Handling stream")
+	logger.Debugf("%s: Handling stream", t.LocalAddr())
 
 	// Read rpcType
 	rpcType, err := wrap.r.ReadByte()
@@ -208,7 +210,7 @@ func (t *Libp2pTransport) streamHandler(wrap *streamWrap) error {
 	isHeartbeat := false
 	switch rpcType {
 	case rpcAppendEntries:
-		log.Debug("An append entries request has arrived")
+		logger.Debugf("%s: An append entries request has arrived", t.LocalAddr())
 		var req raft.AppendEntriesRequest
 		err = wrap.dec.Decode(&req)
 		if err != nil {
@@ -225,7 +227,7 @@ func (t *Libp2pTransport) streamHandler(wrap *streamWrap) error {
 		}
 
 	case rpcRequestVote:
-		log.Debug("A request vote request has arrived")
+		logger.Debugf("%s: A request vote request has arrived", t.LocalAddr())
 		var req raft.RequestVoteRequest
 		err = wrap.dec.Decode(&req)
 		if err != nil {
@@ -234,7 +236,7 @@ func (t *Libp2pTransport) streamHandler(wrap *streamWrap) error {
 		rpc.Command = &req
 
 	case rpcInstallSnapshot:
-		log.Debug("An install snapshot request has arrived")
+		logger.Debugf("%s: An install snapshot request has arrived", t.LocalAddr())
 		// for InstallSnapshot, send: RPC\EOF\data\EOF
 		var req raft.InstallSnapshotRequest
 		err = wrap.dec.Decode(&req)
@@ -289,7 +291,7 @@ RESP: // When Raft is done, it informs us via respCh and we can send a response
 		if err := wrap.w.Flush(); err != nil {
 			return err
 		}
-		log.Debug("Response sent")
+		logger.Debugf("%s: Response sent", t.LocalAddr())
 
 	case <-t.shutdownCh:
 		return ErrTransportShutdown
@@ -350,7 +352,7 @@ func sendRPC(wrap *streamWrap, rpcType uint8, args interface{}) error {
 // receiveRPCResponse receives a generic RPC Response (see streamHandler())
 // for details about how this response is constructed.
 func receiveRPCResponse(wrap *streamWrap, rpcResp interface{}) error {
-	log.Debug("Receiving RPC Response")
+	logger.Debugf("%s: Receiving RPC Response", wrap.stream.Conn().LocalPeer().Pretty())
 
 	// Check for error first
 	var rpcError string
@@ -369,7 +371,7 @@ func receiveRPCResponse(wrap *streamWrap, rpcResp interface{}) error {
 		return errors.New(fmt.Sprint("error decoding rpcResponse: ", err))
 	}
 
-	log.Debug("Valid response received")
+	logger.Debugf("%s: Valid response received", wrap.stream.Conn().LocalPeer().Pretty())
 
 	// Format an error if any
 	if rpcError != "" {
@@ -458,7 +460,7 @@ func (t *Libp2pTransport) RequestVote(target string, args *raft.RequestVoteReque
 // InstallSnapshot is used to push a snapshot down to a follower. The data is read from
 // the ReadCloser and streamed to the client.
 func (t *Libp2pTransport) InstallSnapshot(target string, args *raft.InstallSnapshotRequest, resp *raft.InstallSnapshotResponse, data io.Reader) error {
-	log.Debug("Installing snapshot")
+	logger.Debug("%s: Installing snapshot", t.LocalAddr())
 
 	// Install snapshot is special because we need to stream data so
 	// we cannot re-use our makeRPC function. We go manual
@@ -530,6 +532,23 @@ func (t *Libp2pTransport) Close() error {
 	if !t.shutdown {
 		close(t.shutdownCh)
 		t.shutdown = true
+	}
+	return nil
+}
+
+// OpenConns() opens connections to all known peers. It is
+// not necessary to use it, as connections are opened on
+// demand when creating streams, but is useful to warm
+// up the transports before letting raft use them and checking
+// if LibP2P has connectivity to other peers
+func (t *Libp2pTransport) OpenConns() error {
+	peers := t.host.Peerstore().Peers()
+	for _, p := range peers {
+		peerInfo := t.host.Peerstore().PeerInfo(p)
+		if err := t.host.Connect(t.ctx, peerInfo); err != nil {
+			logger.Errorf("%s: Error opening connection: %s", t.LocalAddr(), err)
+			return err
+		}
 	}
 	return nil
 }
@@ -622,7 +641,7 @@ func (d *deferError) respond(err error) {
 // newLibp2pPipeline opens a stream to the target, launches a go routine
 // to read responses from that stream continuosly
 func newLibp2pPipeline(tr *Libp2pTransport, target string) (*libp2pPipeline, error) {
-	log.Debugf("New pipeline to %s", target)
+	logger.Debugf("%s: New pipeline to %s", tr.LocalAddr(), target)
 	p, err := peer.IDB58Decode(target)
 	if err != nil {
 		return nil, err
@@ -630,12 +649,13 @@ func newLibp2pPipeline(tr *Libp2pTransport, target string) (*libp2pPipeline, err
 
 	stream, err := tr.host.NewStream(tr.ctx, p, RaftPipelineProtocol)
 	if err != nil {
-		log.Debug(err)
+		logger.Debugf("%s: %s", tr.LocalAddr(), err)
 		return nil, err
 	}
 	wrap := wrapStream(stream)
 
 	pipeline := &libp2pPipeline{
+		trans: tr,
 		sWrap: wrap,
 
 		doneCh:       make(chan raft.AppendFuture, rpcMaxPipeline),
@@ -657,7 +677,7 @@ func (p *libp2pPipeline) decodeResponses() {
 		case future := <-p.inProgressCh:
 			err := receiveRPCResponse(p.sWrap, future.resp)
 			if err != nil {
-				log.Errorf("Pipeline error: %s", err)
+				logger.Errorf("%s: Pipeline error: %s", p.trans.LocalAddr(), err)
 				p.Close() // We abort this pipeline
 			}
 			future.respond(err)
@@ -685,7 +705,7 @@ func (p *libp2pPipeline) AppendEntries(args *raft.AppendEntriesRequest, resp *ra
 	future.init()
 
 	// Send this request
-	log.Debug("Appending request to pipeline")
+	logger.Debugf("%s: Appending request to pipeline", p.trans.LocalAddr())
 	err := sendRPC(p.sWrap, rpcAppendEntries, args)
 	if err != nil {
 		return nil, err
@@ -709,6 +729,7 @@ func (p *libp2pPipeline) Consumer() <-chan raft.AppendFuture {
 
 // Close closes the pipeline and cancels all inflight RPCs
 func (p *libp2pPipeline) Close() error {
+	logger.Infof("%s: Shutting down pipeline", p.trans.LocalAddr())
 	p.shutdownLock.Lock()
 	defer p.shutdownLock.Unlock()
 
