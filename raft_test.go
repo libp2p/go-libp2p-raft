@@ -15,27 +15,34 @@ import (
 func Example_consensus() {
 	// This example shows how to use go-libp2p-raft to create a cluster
 	// which agrees on a State. In order to do it, it defines a state,
-	// creates three Raft nodes and launches them. A subroutine
-	// then lets the cluster leader repeteadly update the state. At the
+	// creates three Raft nodes and launches them. We call a function which
+	// lets the cluster leader repeteadly update the state. At the
 	// end of the execution we verify that all members have agreed on the
 	// same state.
 
 	raftTmpFolder := "raft_example_tmp" // deleted at the end
 
 	// Declare an object which represents the State.
+	// Note that State objects should have public/exported fields,
+	// as they are [de]serialized.
 	type raftState struct {
 		Value int
 	}
 
 	// Create peers and add them to Raft peerstores
-	peer1, _ := NewRandomPeer(9998)
-	peer2, _ := NewRandomPeer(9999)
-	peers1 := []*Peer{peer2}
-	peers2 := []*Peer{peer1}
+	peer1, _ := NewRandomPeer(9997)
+	peer2, _ := NewRandomPeer(9998)
+	peer3, _ := NewRandomPeer(9999)
+	peers1 := []*Peer{peer2, peer3}
+	peers2 := []*Peer{peer1, peer3}
+	peers3 := []*Peer{peer1, peer2}
+
 	pstore1 := &Peerstore{}
 	pstore2 := &Peerstore{}
+	pstore3 := &Peerstore{}
 	pstore1.SetRaftPeers(peers1)
 	pstore2.SetRaftPeers(peers2)
+	pstore3.SetRaftPeers(peers3)
 
 	// Create LibP2P transports Raft
 	transport1, err := NewLibp2pTransport(peer1, peers1)
@@ -48,9 +55,22 @@ func Example_consensus() {
 		fmt.Println(err)
 		return
 	}
+	transport3, err := NewLibp2pTransport(peer3, peers3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	transport1.OpenConns()
-	transport2.OpenConns()
+	// Warm up
+	if err := transport1.OpenConns(); err != nil {
+		log.Fatal(err)
+	}
+	if err := transport2.OpenConns(); err != nil {
+		log.Fatal(err)
+	}
+	if err := transport3.OpenConns(); err != nil {
+		log.Fatal(err)
+	}
 
 	// Create the consensus instances and initialize them with a state.
 	// Note that state is just used for local initialization, and that,
@@ -58,17 +78,22 @@ func Example_consensus() {
 	// cluster.
 	consensus1 := NewConsensus(raftState{3})
 	consensus2 := NewConsensus(raftState{3})
+	consensus3 := NewConsensus(raftState{3})
 
 	// Hashicorp/raft initialization
 	config := raft.DefaultConfig()
 	config.LogOutput = nil
 	config.Logger = nil
 	// SnapshotStore
-	snapshots1, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, os.Stderr)
+	snapshots1, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
 	if err != nil {
 		log.Fatal("file snapshot store:", err)
 	}
-	snapshots2, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, os.Stderr)
+	snapshots2, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
+	if err != nil {
+		log.Fatal("file snapshot store:", err)
+	}
+	snapshots3, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
 	if err != nil {
 		log.Fatal("file snapshot store:", err)
 	}
@@ -77,8 +102,11 @@ func Example_consensus() {
 	if err != nil {
 		log.Fatal("new bolt store:", err)
 	}
-	// Create the log store and stable store.
 	logStore2, err := raftboltdb.NewBoltStore(raftTmpFolder + "/raft2.db")
+	if err != nil {
+		log.Fatal("new bolt store:", err)
+	}
+	logStore3, err := raftboltdb.NewBoltStore(raftTmpFolder + "/raft3.db")
 	if err != nil {
 		log.Fatal("new bolt store:", err)
 	}
@@ -86,15 +114,27 @@ func Example_consensus() {
 	// Raft node creation: we use our consensus objects directly as they
 	// implement Raft FSM interface.
 	raft1, err := raft.NewRaft(config, consensus1, logStore1, logStore1, snapshots1, pstore1, transport1)
+	if err != nil {
+		log.Fatal(err)
+	}
 	raft2, err := raft.NewRaft(config, consensus2, logStore2, logStore2, snapshots2, pstore2, transport2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	raft3, err := raft.NewRaft(config, consensus3, logStore3, logStore3, snapshots3, pstore3, transport3)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// We create the actors using the Raft nodes
 	actor1 := NewActor(raft1)
 	actor2 := NewActor(raft2)
+	actor3 := NewActor(raft3)
 
 	// We set the actors so that we can CommitState() and GetCurrentState()
 	consensus1.SetActor(actor1)
 	consensus2.SetActor(actor2)
+	consensus3.SetActor(actor3)
 
 	// This function updates the cluster state commiting 1000 updates.
 	updateState := func(c *Consensus) {
@@ -135,6 +175,8 @@ func Example_consensus() {
 		updateState(consensus1)
 	} else if actor2.IsLeader() {
 		updateState(consensus2)
+	} else if actor3.IsLeader() {
+		updateState(consensus3)
 	}
 
 	// Provide some time for all nodes to catch up
@@ -142,7 +184,8 @@ func Example_consensus() {
 	// Shutdown raft and wait for it to complete
 	// (ignoring errors)
 	raft1.Shutdown().Error()
-	raft1.Shutdown().Error()
+	raft2.Shutdown().Error()
+	raft3.Shutdown().Error()
 	os.RemoveAll(raftTmpFolder)
 
 	// Final states
@@ -156,11 +199,18 @@ func Example_consensus() {
 		fmt.Println(err)
 		return
 	}
+	finalState3, err := consensus3.GetCurrentState()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	finalRaftState1 := finalState1.(raftState)
 	finalRaftState2 := finalState2.(raftState)
+	finalRaftState3 := finalState3.(raftState)
 
 	fmt.Printf("Raft1 final state: %d\n", finalRaftState1.Value)
 	fmt.Printf("Raft2 final state: %d\n", finalRaftState2.Value)
+	fmt.Printf("Raft3 final state: %d\n", finalRaftState3.Value)
 	// Output:
 	// Performed 200 updates. Current state value: 398
 	// Performed 400 updates. Current state value: 798
@@ -169,4 +219,5 @@ func Example_consensus() {
 	// Performed 1000 updates. Current state value: 1998
 	// Raft1 final state: 1998
 	// Raft2 final state: 1998
+	// Raft3 final state: 1998
 }
