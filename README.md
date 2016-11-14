@@ -37,8 +37,18 @@ In short, `go-libp2p-raft`:
 
 ## Install
 
+`go-libp2p-raft` works like a regular Go module:
+
+Fetch with:
+
 ```
-> make install
+> go get -u github.com/libp2p/go-libp2p-raft
+```
+
+You can use the [Gx](https://github.com/whyrusleeping/gx)-pinned dependencies running:
+
+```
+> make
 ```
 
 ## Usage
