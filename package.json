@@ -30,10 +30,10 @@
       "version": "4.0.4"
     },
     {
-      "author": "hector",
-      "hash": "QmURDYriT5hHKzoVqw7SNoLHzTz56tj828y8iLxVBxkApQ",
+      "author": "libp2p",
+      "hash": "QmXja3KdmLxxS5F7SxASEB1Kg9AbkQ9PZpF67hyauHEgZu",
       "name": "go-libp2p-consensus",
-      "version": "0.0.1"
+      "version": "0.0.2"
     }
   ],
   "gxVersion": "0.9.1",
