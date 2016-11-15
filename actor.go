@@ -4,12 +4,13 @@ import (
 	"errors"
 	"time"
 
+	consensus "gx/ipfs/QmZ88KbrvZMJpXaNwAGffswcYKz8EbeafzAFGMCA6MEZKt/go-libp2p-consensus"
+
 	raft "github.com/hashicorp/raft"
-	consensus "github.com/libp2p/go-libp2p-consensus"
 )
 
 // SetStateTimeout specifies how long before giving up on setting a state
-var SetStateTimeout time.Duration = 5 * time.Second
+var SetStateTimeout time.Duration = 1 * time.Second
 
 // Actor implements a consensus.Actor, allowing to SetState
 // in a libp2p Consensus system. In order to do this it uses hashicorp/raft
@@ -41,7 +42,7 @@ func (actor *Actor) SetState(newState consensus.State) (consensus.State, error) 
 		return nil, errors.New("this actor does not have a raft instance")
 	}
 
-	if actor.Raft.State() != raft.Leader {
+	if !actor.IsLeader() {
 		return nil, errors.New("this actor is not the leader")
 	}
 

@@ -3,10 +3,12 @@ package libp2praft
 import (
 	"errors"
 	"io"
+	"io/ioutil"
 	"sync"
 
+	consensus "gx/ipfs/QmZ88KbrvZMJpXaNwAGffswcYKz8EbeafzAFGMCA6MEZKt/go-libp2p-consensus"
+
 	"github.com/hashicorp/raft"
-	consensus "github.com/libp2p/go-libp2p-consensus"
 	codec "github.com/ugorji/go/codec"
 )
 
@@ -106,15 +108,16 @@ func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (fsm *fsm) Restore(reader io.ReadCloser) error {
-	var snapBytes []byte
-	_, err := reader.Read(snapBytes)
+	snapBytes, err := ioutil.ReadAll(reader)
 	if err != nil {
+		logger.Errorf("Error reading snapshot: %s", err)
 		return err
 	}
 
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if err := decodeState(snapBytes, &fsm.state); err != nil {
+		logger.Errorf("Error decoding snapshot: %s", err)
 		return err
 	}
 	fsm.valid = true

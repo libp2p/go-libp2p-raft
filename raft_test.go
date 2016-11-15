@@ -1,16 +1,58 @@
-// Package libp2praft implements a go-libp2p-consensus interface wrapping hashicorp/raft
-// implementation and providing a libp2p network transport for it.
 package libp2praft
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"time"
 
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
 )
+
+var raftTmpFolder = "testing_tmp"
+var raftQuiet = true
+
+type raftState struct {
+	Msg string
+}
+
+// Create a quick raft instance
+func makeTestingRaft(node *Peer, peers []*Peer) (*raft.Raft, *Consensus, *Libp2pTransport, error) {
+	pstore := &Peerstore{}
+	pstore.SetRaftPeers(peers)
+
+	// Create LibP2P transports Raft
+	transport, err := NewLibp2pTransport(node, peers)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	consensus := NewConsensus(raftState{"i am not consensuated"})
+
+	// Hashicorp/raft initialization
+	config := raft.DefaultConfig()
+	if raftQuiet {
+		config.LogOutput = ioutil.Discard
+		config.Logger = nil
+	}
+	// SnapshotStore
+	snapshots, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Create the log store and stable store.
+	logStore := raft.NewInmemStore()
+
+	// Raft node creation: we use our consensus objects directly as they
+	// implement Raft FSM interface.
+	raft, err := raft.NewRaft(config, consensus, logStore, logStore, snapshots, pstore, transport)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return raft, consensus, transport, nil
+}
 
 func Example_consensus() {
 	// This example shows how to use go-libp2p-raft to create a cluster
@@ -60,6 +102,9 @@ func Example_consensus() {
 		fmt.Println(err)
 		return
 	}
+	defer transport1.Close()
+	defer transport2.Close()
+	defer transport3.Close()
 
 	// Warm up
 	if err := transport1.OpenConns(); err != nil {
@@ -82,7 +127,7 @@ func Example_consensus() {
 
 	// Hashicorp/raft initialization
 	config := raft.DefaultConfig()
-	config.LogOutput = nil
+	config.LogOutput = ioutil.Discard
 	config.Logger = nil
 	// SnapshotStore
 	snapshots1, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
@@ -98,18 +143,9 @@ func Example_consensus() {
 		log.Fatal("file snapshot store:", err)
 	}
 	// Create the log store and stable store.
-	logStore1, err := raftboltdb.NewBoltStore(raftTmpFolder + "/raft1.db")
-	if err != nil {
-		log.Fatal("new bolt store:", err)
-	}
-	logStore2, err := raftboltdb.NewBoltStore(raftTmpFolder + "/raft2.db")
-	if err != nil {
-		log.Fatal("new bolt store:", err)
-	}
-	logStore3, err := raftboltdb.NewBoltStore(raftTmpFolder + "/raft3.db")
-	if err != nil {
-		log.Fatal("new bolt store:", err)
-	}
+	logStore1 := raft.NewInmemStore()
+	logStore2 := raft.NewInmemStore()
+	logStore3 := raft.NewInmemStore()
 
 	// Raft node creation: we use our consensus objects directly as they
 	// implement Raft FSM interface.
@@ -168,7 +204,7 @@ func Example_consensus() {
 	}
 
 	// Provide some time for leader election
-	time.Sleep(2 * time.Second)
+	time.Sleep(4 * time.Second)
 
 	// Run the 1000 updates on the leader
 	if actor1.IsLeader() {

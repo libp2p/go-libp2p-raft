@@ -3,7 +3,7 @@ package libp2praft
 import (
 	"errors"
 
-	consensus "github.com/libp2p/go-libp2p-consensus"
+	consensus "gx/ipfs/QmZ88KbrvZMJpXaNwAGffswcYKz8EbeafzAFGMCA6MEZKt/go-libp2p-consensus"
 )
 
 // Consensus implements both the libp2p-consensus interface and the

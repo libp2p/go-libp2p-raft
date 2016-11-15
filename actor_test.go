@@ -1,0 +1,81 @@
+package libp2praft
+
+import (
+	"os"
+	"testing"
+	"time"
+)
+
+func TestNewActor(t *testing.T) {
+	actor := NewActor(nil)
+	st, err := actor.SetState(raftState{"testing"})
+	if st != nil || err == nil {
+		t.Error("should fail when setting an state and raft is nil")
+	}
+
+	if actor.IsLeader() {
+		t.Error("should definitely not be a leader if raft is nil")
+	}
+
+}
+
+func TestSetState(t *testing.T) {
+	peer1, _ := NewRandomPeer(9997)
+	peer2, _ := NewRandomPeer(9998)
+	peers1 := []*Peer{peer2}
+	peers2 := []*Peer{peer1}
+
+	raft1, _, tr1, err := makeTestingRaft(peer1, peers1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raft1.Shutdown()
+	defer tr1.Close()
+	raft2, _, tr2, err := makeTestingRaft(peer2, peers2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raft2.Shutdown()
+	defer tr2.Close()
+	defer os.RemoveAll(raftTmpFolder)
+
+	actor1 := NewActor(raft1)
+	actor2 := NewActor(raft2)
+
+	time.Sleep(2 * time.Second)
+
+	if !actor1.IsLeader() && !actor2.IsLeader() {
+		t.Fatal("raft failed to declare a leader")
+	}
+
+	testLeader := func(actor *Actor) {
+		st, err := actor.SetState(raftState{"testingLeader"})
+		if err != nil {
+			t.Error("The leader should be able to set the state")
+		}
+
+		rSt := st.(raftState)
+		if rSt.Msg != "testingLeader" {
+			t.Error("The returned state is not correct")
+		}
+	}
+
+	testFollower := func(actor *Actor) {
+		st, err := actor.SetState(raftState{"testingFollower"})
+		if st != nil || err == nil {
+			t.Error("The follower should not be able to set the state")
+		}
+	}
+
+	if actor1.IsLeader() {
+		testLeader(actor1)
+	} else {
+		testFollower(actor1)
+	}
+
+	if actor2.IsLeader() {
+		testLeader(actor2)
+	} else {
+		testFollower(actor2)
+	}
+}

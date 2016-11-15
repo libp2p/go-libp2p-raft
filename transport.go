@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	protocol "github.com/libp2p/go-libp2p-protocol"
-	swarm "github.com/libp2p/go-libp2p-swarm"
-	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	peerstore "gx/ipfs/QmXXCcQ7CLg5a81Ui9TTR35QcR4y7ZyihxwfjqaHfUVcVo/go-libp2p-peerstore"
+	protocol "gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
+	bhost "gx/ipfs/QmbCjck5dJL3jS9cVoTSqMxjtH6ikx4zQQAKAfynFrxXpM/go-libp2p/p2p/host/basic"
+	swarm "gx/ipfs/QmcjMKTqrWgMMCExEnwczefhno5fvx7FHDV63peZwDzHNF/go-libp2p-swarm"
+	inet "gx/ipfs/QmdysBu77i3YaagNtMAjiCJdeWWvds18ho5XEB784guQ41/go-libp2p-net"
+	peer "gx/ipfs/QmfMmLGoKzCHDN7cGgk64PJr4iipzidDRME8HABSJqvmhC/go-libp2p-peer"
 
 	raft "github.com/hashicorp/raft"
 	codec "github.com/ugorji/go/codec"
@@ -172,7 +172,7 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 		for {
 			err := t.streamHandler(wrap)
 			if err == io.EOF {
-				logger.Errorf("%s: EOF while handling pipeline stream", t.LocalAddr())
+				logger.Warningf("%s: EOF while handling pipeline stream", t.LocalAddr())
 				s.Close()
 				break
 			}
@@ -532,6 +532,7 @@ func (t *Libp2pTransport) Close() error {
 	if !t.shutdown {
 		close(t.shutdownCh)
 		t.shutdown = true
+		t.host.Close()
 	}
 	return nil
 }
