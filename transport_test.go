@@ -72,6 +72,12 @@ func TestTransportSnapshots(t *testing.T) {
 	}
 	defer raft1.Shutdown()
 	defer tr1.Close()
+
+	// So the new raft2 cannot load the snapshot
+	raftTmpFolderOrig := raftTmpFolder
+	raftTmpFolder = "testing_tmp2"
+	defer os.RemoveAll("testing_tmp2")
+
 	raft2, c2, tr2, err = makeTestingRaft(peer2, peers2)
 	if err != nil {
 		t.Fatalf("raft2: %s", err)
@@ -85,4 +91,5 @@ func TestTransportSnapshots(t *testing.T) {
 	if st.Msg != "count: 4999" {
 		t.Error("State not restored correctly")
 	}
+	raftTmpFolder = raftTmpFolderOrig
 }
