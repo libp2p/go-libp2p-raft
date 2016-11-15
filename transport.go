@@ -9,12 +9,13 @@ import (
 	"sync"
 	"time"
 
-	peerstore "gx/ipfs/QmXXCcQ7CLg5a81Ui9TTR35QcR4y7ZyihxwfjqaHfUVcVo/go-libp2p-peerstore"
-	protocol "gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
-	bhost "gx/ipfs/QmbCjck5dJL3jS9cVoTSqMxjtH6ikx4zQQAKAfynFrxXpM/go-libp2p/p2p/host/basic"
-	swarm "gx/ipfs/QmcjMKTqrWgMMCExEnwczefhno5fvx7FHDV63peZwDzHNF/go-libp2p-swarm"
-	inet "gx/ipfs/QmdysBu77i3YaagNtMAjiCJdeWWvds18ho5XEB784guQ41/go-libp2p-net"
-	peer "gx/ipfs/QmfMmLGoKzCHDN7cGgk64PJr4iipzidDRME8HABSJqvmhC/go-libp2p-peer"
+	p2phost "github.com/libp2p/go-libp2p-host"
+	inet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	protocol "github.com/libp2p/go-libp2p-protocol"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 
 	raft "github.com/hashicorp/raft"
 	codec "github.com/ugorji/go/codec"
@@ -60,7 +61,7 @@ var (
 // thus allowing peers to communicate with eachothers over the multiple
 // transports potentially supported by LibP2P.
 type Libp2pTransport struct {
-	host *bhost.BasicHost
+	host p2phost.Host
 	ctx  context.Context
 
 	consumeCh chan raft.RPC

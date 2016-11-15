@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	consensus "gx/ipfs/QmZ88KbrvZMJpXaNwAGffswcYKz8EbeafzAFGMCA6MEZKt/go-libp2p-consensus"
+	consensus "github.com/libp2p/go-libp2p-consensus"
 
 	raft "github.com/hashicorp/raft"
 )

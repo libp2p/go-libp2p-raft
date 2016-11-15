@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"sync"
 
-	consensus "gx/ipfs/QmZ88KbrvZMJpXaNwAGffswcYKz8EbeafzAFGMCA6MEZKt/go-libp2p-consensus"
+	consensus "github.com/libp2p/go-libp2p-consensus"
 
 	"github.com/hashicorp/raft"
 	codec "github.com/ugorji/go/codec"
