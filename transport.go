@@ -57,9 +57,14 @@ var (
 //
 // The main difference to the user is that, instead of identifying Raft peers
 // by an IP/port pair, we identify them by Peer ID and multiaddresses. Peers
-// maintain an address which provides multiaddresses for every peer ID,
-// thus allowing peers to communicate with eachothers over the multiple
+// maintain an address book which provides multiaddresses for every peer ID,
+// thus allowing peers to communicate with each other over the multiple
 // transports potentially supported by LibP2P.
+//
+// Libp2pTransport streams are opened and closed for each operation. However,
+// the Transport also offers a way for Raft to open a permanent stream
+// (AppendPipeline). This ensures a connection (and a stream) will stay open
+// between peers and reduces the cost of opening/closing individual streams.
 type Libp2pTransport struct {
 	host p2phost.Host
 	ctx  context.Context
@@ -110,13 +115,11 @@ func wrapStream(s inet.Stream) *streamWrap {
 // NewLibp2pTransport returns a new Libp2pTransport. The localPeer addresses
 // are used for listening to incoming connections. The clusterPeers are
 // addresses are added to the localPeer address book, so they can be dialed
-// in the future. The connection on which the streams are multiplexed is only
-// opened on demand.
-//
-// Libp2pTransport streams are opened and closed for each operation. However,
-// the Transport also offers the way for Raft to open a permanent stream
-// (AppendPipeline). This ensures a connection (and a stream) will stay open
-// between peers and reduces the cost of opening/closing streams.
+// in the future.
+// The connections on which the streams are multiplexed is only
+// opened on demand (when a stream is received or opened). This may lead to a
+// slower startup, so OpenConns() offers a way to manually open those
+// connections.
 func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport, error) {
 	// TODO(hector): Connect to peers now to speed up startup and arise errors earlier.
 	ctx := context.Background()
@@ -157,7 +160,32 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 		return nil, err
 	}
 
-	host.SetStreamHandler(RaftProtocol, func(s inet.Stream) {
+	t.setStreamHandlers()
+
+	return t, nil
+}
+
+// NewLibp2pTransportWithHost allows to use an existing host (and the underlying
+// exiting Libp2p Network) for the Raft Transport. This is useful when
+// integrating with applications which also make use of LibP2P as a networking
+// layer (go-ipfs for example).
+//
+// Note that we assume that the given host knows about its peers in the cluster.
+// Otherwise use AddPeer() and AddPeers() to update it.
+func NewLibp2pTransportWithHost(host p2phost.Host) (*Libp2pTransport, error) {
+	ctx := context.Background()
+	t := &Libp2pTransport{
+		host:       host,
+		ctx:        ctx,
+		consumeCh:  make(chan raft.RPC),
+		shutdownCh: make(chan struct{}),
+	}
+	t.setStreamHandlers()
+	return t, nil
+}
+
+func (t *Libp2pTransport) setStreamHandlers() {
+	t.host.SetStreamHandler(RaftProtocol, func(s inet.Stream) {
 		wrap := wrapStream(s)
 		defer s.Close()
 		err := t.streamHandler(wrap)
@@ -168,7 +196,7 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 	})
 
 	// The difference is that these are long lived
-	host.SetStreamHandler(RaftPipelineProtocol, func(s inet.Stream) {
+	t.host.SetStreamHandler(RaftPipelineProtocol, func(s inet.Stream) {
 		wrap := wrapStream(s)
 		for {
 			err := t.streamHandler(wrap)
@@ -183,8 +211,6 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 			}
 		}
 	})
-
-	return t, nil
 }
 
 // streamHandler does most of the heavy job when handling a stream: place the
@@ -549,6 +575,7 @@ func (t *Libp2pTransport) OpenConns() error {
 		peerInfo := t.host.Peerstore().PeerInfo(p)
 		if p == t.host.ID() {
 			continue // do not connect to ourselves
+			// causes an error when using keys
 		}
 		if err := t.host.Connect(t.ctx, peerInfo); err != nil {
 			logger.Errorf("%s: Error opening connection: %s", t.LocalAddr(), err)

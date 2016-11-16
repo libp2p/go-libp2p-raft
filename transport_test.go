@@ -93,3 +93,44 @@ func TestTransportSnapshots(t *testing.T) {
 	}
 	raftTmpFolder = raftTmpFolderOrig
 }
+
+func TestNewLibp2pTransportWithHost(t *testing.T) {
+	defer os.RemoveAll(raftTmpFolder)
+
+	peer1, _ := NewRandomPeer(9997)
+	peer2, _ := NewRandomPeer(9998)
+	peers1 := []*Peer{peer2}
+	peers2 := []*Peer{peer1}
+
+	raft1, _, tr1, err := makeTestingRaft(peer1, peers1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raft2, _, tr2, err := makeTestingRaft(peer2, peers2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raft1.Shutdown()
+	raft2.Shutdown()
+
+	trWithHost1, err1 := NewLibp2pTransportWithHost(tr1.host)
+	trWithHost2, err2 := NewLibp2pTransportWithHost(tr2.host)
+	if err1 != nil || err2 != nil {
+		t.Error(err1)
+		t.Error(err2)
+		t.FailNow()
+	}
+
+	if err := trWithHost1.OpenConns(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := trWithHost2.OpenConns(); err != nil {
+		t.Fatal(err)
+	}
+
+	tr1.Close()
+	tr2.Close()
+	trWithHost1.Close()
+	trWithHost2.Close()
+}
