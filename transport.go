@@ -547,6 +547,9 @@ func (t *Libp2pTransport) OpenConns() error {
 	peers := t.host.Peerstore().Peers()
 	for _, p := range peers {
 		peerInfo := t.host.Peerstore().PeerInfo(p)
+		if p == t.host.ID() {
+			continue // do not connect to ourselves
+		}
 		if err := t.host.Connect(t.ctx, peerInfo); err != nil {
 			logger.Errorf("%s: Error opening connection: %s", t.LocalAddr(), err)
 			return err

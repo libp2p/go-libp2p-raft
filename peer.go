@@ -2,16 +2,11 @@ package libp2praft
 
 import (
 	"fmt"
-	"io"
-	"math/rand"
 	"strings"
-	"time"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	multiaddr "github.com/multiformats/go-multiaddr"
-
-	multihash "github.com/multiformats/go-multihash"
 )
 
 // Peer is a container for information related to libp2p nodes so
@@ -64,24 +59,24 @@ func NewPeerFromMultiaddress(addr multiaddr.Multiaddr) (*Peer, error) {
 // on localhost. The peer ID is randomly generated and has no key pair
 // attached
 func NewRandomPeer(listenPort int) (*Peer, error) {
-	src := rand.NewSource(time.Now().UnixNano())
-	reader := rand.New(src)
-	buf := make([]byte, 16)
-	if _, err := io.ReadFull(reader, buf); err != nil {
-		return nil, err
-	}
-	hash, err := multihash.Sum(buf, multihash.SHA2_256, -1)
+	priv, pub, err := crypto.GenerateKeyPair(crypto.RSA, 2048)
 	if err != nil {
 		return nil, err
 	}
-	pid := peer.ID(hash)
+	pid, err := peer.IDFromPublicKey(pub)
+	if err != nil {
+		return nil, err
+	}
 	maddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))
 	if err != nil {
 		return nil, err
 	}
+
 	return &Peer{
-		ID:    pid,
-		Addrs: []multiaddr.Multiaddr{maddr},
+		ID:         pid,
+		Addrs:      []multiaddr.Multiaddr{maddr},
+		PrivateKey: priv,
+		PublicKey:  pub,
 	}, nil
 }
 
