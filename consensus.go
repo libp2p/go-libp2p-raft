@@ -22,6 +22,7 @@ func NewConsensus(state consensus.State) *Consensus {
 	con := new(Consensus)
 	con.state = state
 	con.valid = false
+	con.subscriberCh = nil
 	return con
 }
 
@@ -45,4 +46,24 @@ func (c *Consensus) CommitState(state consensus.State) (consensus.State, error) 
 		return nil, errors.New("no actor set to commit the new state")
 	}
 	return c.actor.SetState(state)
+}
+
+// Subscribe returns a channel on which every new state is sent.
+func (c *Consensus) Subscribe() <-chan consensus.State {
+	c.chMux.Lock()
+	defer c.chMux.Unlock()
+	if c.subscriberCh == nil {
+		c.subscriberCh = make(chan consensus.State, MaxSubscriberCh)
+	}
+	return c.subscriberCh
+}
+
+// Unsubscribe closes the channel returned upon Subscribe() (if any).
+func (c *Consensus) Unsubscribe() {
+	c.chMux.Lock()
+	defer c.chMux.Unlock()
+	if c.subscriberCh != nil {
+		close(c.subscriberCh)
+		c.subscriberCh = nil
+	}
 }

@@ -12,6 +12,8 @@ import (
 	codec "github.com/ugorji/go/codec"
 )
 
+var MaxSubscriberCh = 128
+
 // fsm implements a minimal raft.FSM that holds a generic consensus.State
 // so it can be serialized/deserialized, snappshotted and restored.
 // fsm is used by Consensus to keep track of the state of the system
@@ -19,6 +21,9 @@ type fsm struct {
 	state consensus.State
 	valid bool
 	mux   sync.Mutex
+
+	subscriberCh chan consensus.State
+	chMux        sync.Mutex
 }
 
 // encodeState serializes a state
@@ -71,10 +76,11 @@ func dupState(state consensus.State) (consensus.State, error) {
 	return newState, nil
 }
 
-// Apply applies deserializes a Raft log entry and saves it as our new state.
-// It returns a future which is then returned by Raft.Apply() if the Raft node
-// that made the call was the leader. The future is a copy of the fsm state
-// so that the fsm suffers no side effects from external modifications.
+// Apply is invoked once a log entry is commited. It deserializes a Raft log
+// entry and saves it as our new state which is returned. The new state
+// is then used by Raft to create the future which is returned by Raft.Apply()
+// The future is a copy of the fsm state so that the fsm suffers no side
+// effects from external modifications.
 func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
@@ -84,13 +90,16 @@ func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 		return nil
 	}
 
-	future, err := dupState(fsm.state)
+	newState, err := dupState(fsm.state)
 	if err != nil {
 		logger.Error("error duplicating state to return it as future:", err)
 		return nil
 	}
 	fsm.valid = true
-	return future
+
+	fsm.updateSubscribers(newState)
+
+	return newState
 }
 
 func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
@@ -133,6 +142,18 @@ func (fsm *fsm) State() (consensus.State, error) {
 		return nil, errors.New("no state has been agreed upon yet")
 	}
 	return dupState(fsm.state)
+}
+
+func (fsm *fsm) updateSubscribers(st consensus.State) {
+	fsm.chMux.Lock()
+	defer fsm.chMux.Unlock()
+	if fsm.subscriberCh != nil {
+		select {
+		case fsm.subscriberCh <- st:
+		default:
+			logger.Error("subscriber channel is full. Discarding state!")
+		}
+	}
 }
 
 // fsmSnapshot implements the hashicorp/raft interface and allows to serialize a
