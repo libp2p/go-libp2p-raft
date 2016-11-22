@@ -69,3 +69,8 @@ func (actor *Actor) IsLeader() bool {
 	}
 	return false
 }
+
+// Leader returns the Raft's leader as seen by Raft (peer ID)
+func (actor *Actor) Leader() string {
+	return actor.Raft.Leader()
+}
