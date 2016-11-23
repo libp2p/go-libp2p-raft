@@ -57,7 +57,7 @@ func TestTransportSnapshots(t *testing.T) {
 	future := raft1.Snapshot()
 	err = future.Error() //wait for snapshot
 	if err != nil {
-		t.Fatalf("Error taking snapshot: %s", err)
+		t.Fatalf("error taking snapshot: %s", err)
 	}
 
 	raft1.Shutdown()
@@ -89,7 +89,7 @@ func TestTransportSnapshots(t *testing.T) {
 	newst, err := c1.GetCurrentState()
 	st := newst.(raftState)
 	if st.Msg != "count: 4999" {
-		t.Error("State not restored correctly")
+		t.Error("state not restored correctly")
 	}
 	raftTmpFolder = raftTmpFolderOrig
 }
@@ -106,15 +106,21 @@ func TestNewLibp2pTransportWithHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer tr1.Close()
 	raft2, _, tr2, err := makeTestingRaft(peer2, peers2)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer tr2.Close()
+
 	raft1.Shutdown()
 	raft2.Shutdown()
 
 	trWithHost1, err1 := NewLibp2pTransportWithHost(tr1.host)
+	defer trWithHost1.Close()
 	trWithHost2, err2 := NewLibp2pTransportWithHost(tr2.host)
+	defer trWithHost2.Close()
+
 	if err1 != nil || err2 != nil {
 		t.Error(err1)
 		t.Error(err2)
@@ -129,8 +135,7 @@ func TestNewLibp2pTransportWithHost(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tr1.Close()
-	tr2.Close()
-	trWithHost1.Close()
-	trWithHost2.Close()
+	if trWithHost1.Host().ID() != peer1.ID || trWithHost2.Host().ID() != peer2.ID {
+		t.Error("host IDs should match")
+	}
 }
