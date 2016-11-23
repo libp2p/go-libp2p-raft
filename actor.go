@@ -4,9 +4,9 @@ import (
 	"errors"
 	"time"
 
-	consensus "github.com/libp2p/go-libp2p-consensus"
-
 	raft "github.com/hashicorp/raft"
+	peer "github.com/ipfs/go-libp2p-peer"
+	consensus "github.com/libp2p/go-libp2p-consensus"
 )
 
 // SetStateTimeout specifies how long before giving up on setting a state
@@ -70,7 +70,13 @@ func (actor *Actor) IsLeader() bool {
 	return false
 }
 
-// Leader returns the Raft's leader as seen by Raft (peer ID)
-func (actor *Actor) Leader() string {
-	return actor.Raft.Leader()
+// Leader returns the LibP2P ID of the Raft leader.
+func (actor *Actor) Leader() peer.ID {
+	// Leader as returned by Libp2pTransport.LocalAddr()
+	raftLeader := actor.Raft.Leader()
+	peerID, err := peer.IDB58Decode(raftLeader)
+	if err != nil {
+		panic(err)
+	}
+	return peerID
 }
