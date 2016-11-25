@@ -5,8 +5,8 @@ import (
 	"time"
 
 	raft "github.com/hashicorp/raft"
-	peer "github.com/ipfs/go-libp2p-peer"
 	consensus "github.com/libp2p/go-libp2p-consensus"
+	peer "github.com/libp2p/go-libp2p-peer"
 )
 
 // SetStateTimeout specifies how long before giving up on setting a state
