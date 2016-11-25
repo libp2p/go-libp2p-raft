@@ -585,6 +585,11 @@ func (t *Libp2pTransport) OpenConns() error {
 	return nil
 }
 
+// Host returns the LibP2P host associated to this transport
+func (t *Libp2pTransport) Host() p2phost.Host {
+	return t.host
+}
+
 // libp2pPipeline implements raft.AppendPipeline.
 // It is used for pipelining AppendEntries requests. It is used to increase the
 // replication throughput by masking latency and better utilizing bandwidth.
