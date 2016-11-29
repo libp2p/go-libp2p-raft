@@ -25,9 +25,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmbCjck5dJL3jS9cVoTSqMxjtH6ikx4zQQAKAfynFrxXpM",
+      "hash": "Qmayo1f6ygtTkbT5BTPYGhYvWL2LuYGi1VaHyCmrJzC79N",
       "name": "go-libp2p",
-      "version": "4.0.4"
+      "version": "4.3.0"
     },
     {
       "author": "hsanjuan",
@@ -41,6 +41,6 @@
   "license": "",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "0.0.2"
+  "version": "0.1.0"
 }
 
