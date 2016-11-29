@@ -2,7 +2,7 @@
   "author": "hsanjuan",
   "bugs": {},
   "gx": {
-    "dvcsimport": "github.com/hsanjuan/go-libp2p-raft"
+    "dvcsimport": "github.com/libp2p/go-libp2p-raft"
   },
   "gxDependencies": [
     {
@@ -23,6 +23,6 @@
   "license": "",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
 
