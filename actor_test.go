@@ -48,6 +48,9 @@ func TestSetState(t *testing.T) {
 		t.Fatal("raft failed to declare a leader")
 	}
 
+	t.Log(actor1.Leader())
+	t.Log(actor2.Leader())
+
 	testLeader := func(actor *Actor) {
 		st, err := actor.SetState(raftState{"testingLeader"})
 		if err != nil {
