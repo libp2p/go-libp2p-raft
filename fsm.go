@@ -9,16 +9,17 @@ import (
 	consensus "github.com/libp2p/go-libp2p-consensus"
 
 	"github.com/hashicorp/raft"
-	codec "github.com/ugorji/go/codec"
 )
 
 var MaxSubscriberCh = 128
 
 // fsm implements a minimal raft.FSM that holds a generic consensus.State
-// so it can be serialized/deserialized, snappshotted and restored.
-// fsm is used by Consensus to keep track of the state of the system
+// and applies generic Ops to it. The state can be serialized/deserialized,
+// snappshotted and restored.
+// fsm is used by Consensus to keep track of the state of an OpLog.
 type fsm struct {
 	state consensus.State
+	op    consensus.Op
 	valid bool
 	mux   sync.Mutex
 
@@ -26,80 +27,38 @@ type fsm struct {
 	chMux        sync.Mutex
 }
 
-// encodeState serializes a state
-func encodeState(state consensus.State) ([]byte, error) {
-	var buf []byte
-	enc := codec.NewEncoderBytes(&buf, &codec.MsgpackHandle{})
-	if err := enc.Encode(state); err != nil {
-		return nil, err
-	}
-	// enc := msgpack.Multicodec().NewEncoder(buffer)
-	// if err := enc.Encode(state); err != nil {
-	// 	return nil, err
-	// }
-	return buf, nil
-}
-
-// decodeState deserializes a state
-func decodeState(bs []byte, state *consensus.State) error {
-	dec := codec.NewDecoderBytes(bs, &codec.MsgpackHandle{})
-
-	if err := dec.Decode(state); err != nil {
-		return err
-	}
-
-	// buffer := bytes.NewBuffer(bs)
-	// dec := msgpack.MultiCodec().NewDecoder(buffer)
-	// if err := dec.Decode(state); err != nil {
-	// 	return err
-	// }
-	return nil
-}
-
-// Returns a new state which is a copy of the given one.
-// In order to copy it it serializes and deserializes it into a new
-// variable.
-func dupState(state consensus.State) (consensus.State, error) {
-	newState := state
-
-	// We encode and redecode on the new object
-	bs, err := encodeState(state)
-	if err != nil {
-		return nil, err
-	}
-
-	err = decodeState(bs, &newState)
-	if err != nil {
-		return nil, err
-	}
-
-	return newState, nil
-}
-
 // Apply is invoked once a log entry is commited. It deserializes a Raft log
-// entry and saves it as our new state which is returned. The new state
-// is then used by Raft to create the future which is returned by Raft.Apply()
-// The future is a copy of the fsm state so that the fsm suffers no side
-// effects from external modifications.
+// entry, creates an operation with it, applies it to the current state and
+// saves it as our new state which is returned.
+// It is then used by Raft to create the future which is returned by
+// Raft.Apply(). The future is a copy of the fsm state so that the fsm
+// suffers no side effects from external modifications.
 func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 
-	if err := decodeState(rlog.Data, &fsm.state); err != nil {
-		logger.Error("error decoding state: ", err)
+	if err := decodeOp(rlog.Data, &fsm.op); err != nil {
+		logger.Error("error decoding op: ", err)
 		return nil
 	}
 
-	newState, err := dupState(fsm.state)
+	newState, err := fsm.op.ApplyTo(fsm.state)
+	if err != nil {
+		// FIXME: OMG what happens if this actually fails!
+		logger.Error("error applying Op to State")
+	} else {
+		fsm.state = newState
+	}
+
+	fState, err := dupState(fsm.state)
 	if err != nil {
 		logger.Error("error duplicating state to return it as future:", err)
 		return nil
 	}
 	fsm.valid = true
 
-	fsm.updateSubscribers(newState)
-
-	return newState
+	fsm.updateSubscribers(fState)
+	return fState
 }
 
 func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
@@ -131,6 +90,26 @@ func (fsm *fsm) Restore(reader io.ReadCloser) error {
 	}
 	fsm.valid = true
 	return nil
+}
+
+// Subscribe returns a channel on which every new state is sent.
+func (fsm *fsm) Subscribe() <-chan consensus.State {
+	fsm.chMux.Lock()
+	defer fsm.chMux.Unlock()
+	if fsm.subscriberCh == nil {
+		fsm.subscriberCh = make(chan consensus.State, MaxSubscriberCh)
+	}
+	return fsm.subscriberCh
+}
+
+// Unsubscribe closes the channel returned upon Subscribe() (if any).
+func (fsm *fsm) Unsubscribe() {
+	fsm.chMux.Lock()
+	defer fsm.chMux.Unlock()
+	if fsm.subscriberCh != nil {
+		close(fsm.subscriberCh)
+		fsm.subscriberCh = nil
+	}
 }
 
 // State returns a copy of the state so that the fsm cannot be

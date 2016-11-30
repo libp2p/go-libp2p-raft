@@ -42,7 +42,7 @@ func TestSetState(t *testing.T) {
 	actor1 := NewActor(raft1)
 	actor2 := NewActor(raft2)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	if !actor1.IsLeader() && !actor2.IsLeader() {
 		t.Fatal("raft failed to declare a leader")
