@@ -1,10 +1,13 @@
 package libp2praft
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
+
+	consensus "github.com/libp2p/go-libp2p-consensus"
 )
 
 // TestNewConsensus sees that a new consensus object works as expected
@@ -218,6 +221,93 @@ func TestOpLog(t *testing.T) {
 	}
 
 	newSt2 = logHead2.(raftState)
+	t.Log(newSt2.Msg)
+	if newSt2.Msg != "Good as new" {
+		t.Error("Log head is not the result of a rollback")
+	}
+}
+
+type badOp struct {
+}
+
+func (b badOp) ApplyTo(s consensus.State) (consensus.State, error) {
+	return nil, errors.New("whops")
+}
+
+func TestBadApplyAt(t *testing.T) {
+	peer1, _ := NewRandomPeer(9997)
+	peer2, _ := NewRandomPeer(9998)
+	peers1 := []*Peer{peer2}
+	peers2 := []*Peer{peer1}
+
+	raft1, opLog1, tr1, err := makeTestingRaft(peer1, peers1, badOp{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raft1.Shutdown()
+	defer tr1.Close()
+	raft2, opLog2, tr2, err := makeTestingRaft(peer2, peers2, badOp{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raft2.Shutdown()
+	defer tr2.Close()
+	defer os.RemoveAll(raftTmpFolder)
+
+	actor1 := NewActor(raft1)
+	actor2 := NewActor(raft2)
+	opLog1.SetActor(actor1)
+	opLog2.SetActor(actor2)
+
+	time.Sleep(3 * time.Second)
+
+	if !actor1.IsLeader() && !actor2.IsLeader() {
+		t.Fatal("raft failed to declare a leader")
+	}
+
+	op := badOp{}
+	// Only leader will succeed
+	t.Log("testing CommitOp with bad operation")
+	opLog1.CommitOp(op)
+	opLog2.CommitOp(op)
+
+	time.Sleep(1 * time.Second)
+
+	logHead1, err := opLog1.GetLogHead()
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	logHead2, err := opLog2.GetLogHead()
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	// Test a ROLLBACK now
+	// Only the leader will succeed
+	t.Log("testing Rollback")
+	opLog1.Rollback(raftState{"Good as new"})
+	opLog2.Rollback(raftState{"Good as new"})
+
+	time.Sleep(1 * time.Second)
+
+	logHead1, err = opLog1.GetLogHead()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	logHead2, err = opLog2.GetLogHead()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newSt1 := logHead1.(raftState)
+	t.Log(newSt1.Msg)
+	if newSt1.Msg != "Good as new" {
+		t.Error("Log head is not the result of a rollback")
+	}
+
+	newSt2 := logHead2.(raftState)
 	t.Log(newSt2.Msg)
 	if newSt2.Msg != "Good as new" {
 		t.Error("Log head is not the result of a rollback")
