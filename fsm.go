@@ -18,39 +18,58 @@ var MaxSubscriberCh = 128
 // snappshotted and restored.
 // fsm is used by Consensus to keep track of the state of an OpLog.
 type fsm struct {
-	state consensus.State
-	op    consensus.Op
-	valid bool
-	mux   sync.Mutex
+	state        consensus.State
+	op           consensus.Op
+	initialized  bool
+	inconsistent bool
+
+	mux sync.Mutex
 
 	subscriberCh chan consensus.State
 	chMux        sync.Mutex
 }
 
-// Apply is invoked once a log entry is commited. It deserializes a Raft log
-// entry, creates an operation with it, applies it to the current state and
-// saves it as our new state which is returned.
-// It is then used by Raft to create the future which is returned by
-// Raft.Apply().
+// Apply is invoked by Raft once a log entry is commited. Do not use directly.
 func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 
-	if err := decodeOp(rlog.Data, &fsm.op); err != nil {
-		logger.Error("error decoding op: ", err)
-		return nil
-	}
+	// What this does:
+	// - Check that we can deserialize an operation
+	//   - If yes -> ApplyTo() the state if it is consistent so far
+	//     - If ApplyTo() fails, return nil and mark state as inconsistent
+	//     - If ApplyTo() works, replace the state
+	//   - If no -> check if we can deserialize a consensusOp (rollbacks)
+	//     - If it fails -> return nil and mark the state inconsistent
+	//     - If it works -> replace the state and mark it as consistent
+	// - Notify subscribers of the new state and return it
 
-	//fmt.Printf("%+v\n", fsm.op)
-	newState, err := fsm.op.ApplyTo(fsm.state)
-	if err != nil {
-		// FIXME: OMG what happens if this actually fails!
-		logger.Error("error applying Op to State")
+	var newState consensus.State
+
+	if err := decodeOp(rlog.Data, &fsm.op); err != nil {
+		// maybe it is a standard rollback
+		rollbackOp := consensus.Op(consensusOp{fsm.state})
+		err := decodeOp(rlog.Data, &rollbackOp)
+		if err != nil {
+			logger.Error("error decoding op: ", err)
+			fsm.inconsistent = true
+			return nil
+		}
+		//fmt.Printf("%+v\n", rollbackOp)
+		castedRollback := rollbackOp.(consensusOp)
+		newState = castedRollback.State
+		fsm.inconsistent = false
 	} else {
-		fsm.state = newState
-		fsm.valid = true
+		//fmt.Printf("%+v\n", fsm.op)
+		newState, err = fsm.op.ApplyTo(fsm.state)
+		if err != nil {
+			logger.Error("error applying Op to State")
+			fsm.inconsistent = true
+			return nil
+		}
 	}
-	//fmt.Printf("%+v\n", fsm.state)
+	fsm.state = newState
+	fsm.initialized = true
 
 	fsm.updateSubscribers(fsm.state)
 	return fsm.state
@@ -59,6 +78,14 @@ func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
+	if !fsm.initialized {
+		logger.Error("tried to snapshot uninitialized state")
+		return nil, errors.New("cannot snapshot unitialized state")
+	}
+	if fsm.inconsistent {
+		logger.Error("tried to snapshot inconsistent state")
+		return nil, errors.New("cannot snapshot inconsistent state")
+	}
 
 	// Encode the state
 	bytes, err := encodeState(fsm.state)
@@ -83,7 +110,8 @@ func (fsm *fsm) Restore(reader io.ReadCloser) error {
 		logger.Errorf("Error decoding snapshot: %s", err)
 		return err
 	}
-	fsm.valid = true
+	fsm.initialized = true
+	fsm.inconsistent = false
 	return nil
 }
 
@@ -111,8 +139,11 @@ func (fsm *fsm) Unsubscribe() {
 func (fsm *fsm) State() (consensus.State, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if fsm.valid != true {
+	if !fsm.initialized {
 		return nil, errors.New("no state has been agreed upon yet")
+	}
+	if fsm.inconsistent {
+		return nil, errors.New("the state on this node is not consistent")
 	}
 	return fsm.state, nil
 }

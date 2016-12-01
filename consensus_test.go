@@ -165,6 +165,7 @@ func TestOpLog(t *testing.T) {
 	}
 
 	// Only leader will succeed
+	t.Log("testing CommitOp")
 	testCommitOps(opLog1)
 	testCommitOps(opLog2)
 
@@ -190,5 +191,35 @@ func TestOpLog(t *testing.T) {
 	t.Log(newSt2.Msg)
 	if newSt2.Msg != "I have appended this sentence to the state Msg." {
 		t.Error("Log head is not the result of applying the operations")
+	}
+
+	// Test a ROLLBACK now
+	// Only the leader will succeed
+	t.Log("testing Rollback")
+	opLog1.Rollback(raftState{"Good as new"})
+	opLog2.Rollback(raftState{"Good as new"})
+
+	time.Sleep(1 * time.Second)
+
+	logHead1, err = opLog1.GetLogHead()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	logHead2, err = opLog2.GetLogHead()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newSt1 = logHead1.(raftState)
+	t.Log(newSt1.Msg)
+	if newSt1.Msg != "Good as new" {
+		t.Error("Log head is not the result of a rollback")
+	}
+
+	newSt2 = logHead2.(raftState)
+	t.Log(newSt2.Msg)
+	if newSt2.Msg != "Good as new" {
+		t.Error("Log head is not the result of a rollback")
 	}
 }

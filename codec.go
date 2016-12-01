@@ -2,6 +2,7 @@ package libp2praft
 
 import (
 	consensus "github.com/libp2p/go-libp2p-consensus"
+
 	"github.com/ugorji/go/codec"
 )
 
@@ -21,7 +22,9 @@ func encodeState(state consensus.State) ([]byte, error) {
 
 // decodeState deserializes a state
 func decodeState(bs []byte, state *consensus.State) error {
-	dec := codec.NewDecoderBytes(bs, &codec.MsgpackHandle{})
+	h := codec.MsgpackHandle{}
+	h.ErrorIfNoField = true
+	dec := codec.NewDecoderBytes(bs, &h)
 
 	if err := dec.Decode(state); err != nil {
 		return err
@@ -52,7 +55,10 @@ func encodeOp(op consensus.Op) ([]byte, error) {
 
 // decodeOp deserializes a op
 func decodeOp(bs []byte, op *consensus.Op) error {
-	dec := codec.NewDecoderBytes(bs, &codec.MsgpackHandle{})
+	h := codec.MsgpackHandle{}
+	// Important, allows to handle rollbacks
+	h.ErrorIfNoField = true
+	dec := codec.NewDecoderBytes(bs, &h)
 
 	if err := dec.Decode(op); err != nil {
 		return err
