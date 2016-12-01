@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	consensus "github.com/libp2p/go-libp2p-consensus"
+
 	"github.com/hashicorp/raft"
 )
 
@@ -17,8 +19,17 @@ type raftState struct {
 	Msg string
 }
 
+type testOperation struct {
+	Append string
+}
+
+func (o testOperation) ApplyTo(s consensus.State) (consensus.State, error) {
+	raftSt := s.(raftState)
+	return raftState{Msg: raftSt.Msg + o.Append}, nil
+}
+
 // Create a quick raft instance
-func makeTestingRaft(node *Peer, peers []*Peer) (*raft.Raft, *Consensus, *Libp2pTransport, error) {
+func makeTestingRaft(node *Peer, peers []*Peer, op consensus.Op) (*raft.Raft, *Consensus, *Libp2pTransport, error) {
 	pstore := &Peerstore{}
 	pstore.SetRaftPeers(peers)
 
@@ -28,7 +39,12 @@ func makeTestingRaft(node *Peer, peers []*Peer) (*raft.Raft, *Consensus, *Libp2p
 		return nil, nil, nil, err
 	}
 
-	consensus := NewConsensus(raftState{"i am not consensuated"})
+	var consensus *Consensus
+	if op != nil {
+		consensus = NewOpLog(raftState{}, op)
+	} else {
+		consensus = NewConsensus(raftState{"i am not consensuated"})
+	}
 
 	// Hashicorp/raft initialization
 	config := raft.DefaultConfig()

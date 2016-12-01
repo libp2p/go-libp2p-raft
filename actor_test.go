@@ -25,13 +25,13 @@ func TestSetState(t *testing.T) {
 	peers1 := []*Peer{peer2}
 	peers2 := []*Peer{peer1}
 
-	raft1, _, tr1, err := makeTestingRaft(peer1, peers1)
+	raft1, _, tr1, err := makeTestingRaft(peer1, peers1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer raft1.Shutdown()
 	defer tr1.Close()
-	raft2, _, tr2, err := makeTestingRaft(peer2, peers2)
+	raft2, _, tr2, err := makeTestingRaft(peer2, peers2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -36,13 +36,13 @@ func TestSubscribe(t *testing.T) {
 	peers1 := []*Peer{peer2}
 	peers2 := []*Peer{peer1}
 
-	raft1, c1, tr1, err := makeTestingRaft(peer1, peers1)
+	raft1, c1, tr1, err := makeTestingRaft(peer1, peers1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer raft1.Shutdown()
 	defer tr1.Close()
-	raft2, c2, tr2, err := makeTestingRaft(peer2, peers2)
+	raft2, c2, tr2, err := makeTestingRaft(peer2, peers2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,4 +120,68 @@ func TestSubscribe(t *testing.T) {
 	c2.Unsubscribe()
 	c1.Unsubscribe()
 	c2.Unsubscribe()
+}
+
+func TestOpLog(t *testing.T) {
+	peer1, _ := NewRandomPeer(9997)
+	peer2, _ := NewRandomPeer(9998)
+	peers1 := []*Peer{peer2}
+	peers2 := []*Peer{peer1}
+
+	raft1, opLog1, tr1, err := makeTestingRaft(peer1, peers1, testOperation{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raft1.Shutdown()
+	defer tr1.Close()
+	raft2, opLog2, tr2, err := makeTestingRaft(peer2, peers2, testOperation{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raft2.Shutdown()
+	defer tr2.Close()
+	defer os.RemoveAll(raftTmpFolder)
+
+	actor1 := NewActor(raft1)
+	actor2 := NewActor(raft2)
+	opLog1.SetActor(actor1)
+	opLog2.SetActor(actor2)
+
+	time.Sleep(3 * time.Second)
+
+	if !actor1.IsLeader() && !actor2.IsLeader() {
+		t.Fatal("raft failed to declare a leader")
+	}
+
+	testCommitOps := func(opLog *Consensus) {
+		op := testOperation{"I have "}
+		opLog.CommitOp(op)
+		op = testOperation{"appended "}
+		opLog.CommitOp(op)
+		op = testOperation{"this sentence "}
+		opLog.CommitOp(op)
+		op = testOperation{"to the state Msg."}
+		opLog.CommitOp(op)
+	}
+
+	// Only leader will succeed
+	testCommitOps(opLog1)
+	testCommitOps(opLog2)
+
+	time.Sleep(1 * time.Second)
+
+	logHead1, _ := opLog1.GetLogHead()
+	logHead2, _ := opLog2.GetLogHead()
+
+	newSt1 := logHead1.(raftState)
+	t.Log(newSt1.Msg)
+	if newSt1.Msg != "I have appended this sentence to the state Msg." {
+		t.Error("Log head is not the result of applying the operations")
+	}
+
+	newSt2 := logHead2.(raftState)
+	t.Log(newSt2.Msg)
+	if newSt2.Msg != "I have appended this sentence to the state Msg." {
+		t.Error("Log head is not the result of applying the operations")
+	}
 }
