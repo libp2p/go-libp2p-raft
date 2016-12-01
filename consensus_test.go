@@ -170,8 +170,15 @@ func TestOpLog(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	logHead1, _ := opLog1.GetLogHead()
-	logHead2, _ := opLog2.GetLogHead()
+	logHead1, err := opLog1.GetLogHead()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	logHead2, err := opLog2.GetLogHead()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	newSt1 := logHead1.(raftState)
 	t.Log(newSt1.Msg)

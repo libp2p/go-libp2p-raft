@@ -1,6 +1,10 @@
 package libp2praft
 
-import "testing"
+import (
+	"testing"
+
+	consensus "github.com/libp2p/go-libp2p-consensus"
+)
 
 // Lets assume this would be our state
 type testState struct {
@@ -13,8 +17,7 @@ type simple struct {
 	D int
 }
 
-// This should cover encode/decode too
-func TestDupState(t *testing.T) {
+func TestCodecs(t *testing.T) {
 	st := testState{
 		A: 5,
 		B: "hola",
@@ -23,7 +26,14 @@ func TestDupState(t *testing.T) {
 		},
 	}
 
-	stmp, err := dupState(st)
+	bytes, err := encodeState(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stmp := consensus.State(testState{})
+
+	err = decodeState(bytes, &stmp)
 	if err != nil {
 		t.Fatal(err)
 	}

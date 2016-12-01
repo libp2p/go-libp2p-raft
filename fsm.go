@@ -31,8 +31,7 @@ type fsm struct {
 // entry, creates an operation with it, applies it to the current state and
 // saves it as our new state which is returned.
 // It is then used by Raft to create the future which is returned by
-// Raft.Apply(). The future is a copy of the fsm state so that the fsm
-// suffers no side effects from external modifications.
+// Raft.Apply().
 func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
@@ -42,23 +41,19 @@ func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 		return nil
 	}
 
+	//fmt.Printf("%+v\n", fsm.op)
 	newState, err := fsm.op.ApplyTo(fsm.state)
 	if err != nil {
 		// FIXME: OMG what happens if this actually fails!
 		logger.Error("error applying Op to State")
 	} else {
 		fsm.state = newState
+		fsm.valid = true
 	}
+	//fmt.Printf("%+v\n", fsm.state)
 
-	fState, err := dupState(fsm.state)
-	if err != nil {
-		logger.Error("error duplicating state to return it as future:", err)
-		return nil
-	}
-	fsm.valid = true
-
-	fsm.updateSubscribers(fState)
-	return fState
+	fsm.updateSubscribers(fsm.state)
+	return fsm.state
 }
 
 func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
@@ -112,15 +107,14 @@ func (fsm *fsm) Unsubscribe() {
 	}
 }
 
-// State returns a copy of the state so that the fsm cannot be
-// messed with if the state is modified outside
+// State returns the current state as agreed by the cluster
 func (fsm *fsm) State() (consensus.State, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if fsm.valid != true {
 		return nil, errors.New("no state has been agreed upon yet")
 	}
-	return dupState(fsm.state)
+	return fsm.state, nil
 }
 
 func (fsm *fsm) updateSubscribers(st consensus.State) {

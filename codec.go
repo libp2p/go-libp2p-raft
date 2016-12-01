@@ -35,26 +35,6 @@ func decodeState(bs []byte, state *consensus.State) error {
 	return nil
 }
 
-// Returns a new state which is a copy of the given one.
-// In order to copy it it serializes and deserializes it into a new
-// variable.
-func dupState(state consensus.State) (consensus.State, error) {
-	newState := state
-
-	// We encode and redecode on the new object
-	bs, err := encodeState(state)
-	if err != nil {
-		return nil, err
-	}
-
-	err = decodeState(bs, &newState)
-	if err != nil {
-		return nil, err
-	}
-
-	return newState, nil
-}
-
 // encodeOp serializes an op
 func encodeOp(op consensus.Op) ([]byte, error) {
 	var buf []byte
