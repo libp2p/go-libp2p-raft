@@ -7,10 +7,10 @@ import (
 )
 
 // Consensus implements both the go-libp2p-consensus Consensus
-// and the OpLogConsensus interfaces. The Consensus interface can be
-// expressed as a particular case of a distributed OpLog, where every
-// operation is the state itself. Therefore, it is natural and cheap
-// to implement both in the same place.
+// and the OpLogConsensus interfaces. This is because the Consensus
+// interface is just a particular case of the OpLog interface,
+// where the operation applied holds the new version of the state
+// and replaces the current one with it.
 //
 // Furthermore, the Consensus type implements the Hashicorp
 // Raft FSM interface. It should be used to initialize Raft, which
