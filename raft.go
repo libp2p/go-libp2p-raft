@@ -21,13 +21,14 @@
 // how these instances look like.
 //
 // Any consensus.State or consensus.Op is expected any relevant
-// fields as public fields. Private fields are not serialized,
+// fields as exported fields. Unexported fields are not serialized,
 // they are not transmitted, not received and deserialized
-// in other nodes. Private fields stay at the value provided by
+// in other nodes. Unexported fields stay at the value provided by
 // the state and op initializers in the NewConsensus() or NewOpLog().
 // This includes the fields from children structs. Therefore,
 // it is recommended to simplify user defined types like consensus.Op
-// and consensus.State as much as possible.
+// and consensus.State as much as possible and declare all
+// relevant fields as exported.
 //
 // A consensus.Op ApplyTo() operation may return an error. This
 // means that, while the operation is agreed-upon, the resulting
