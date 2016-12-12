@@ -137,8 +137,8 @@ func (fsm *FSM) unsubscribe() {
 	}
 }
 
-// State returns the current state as agreed by the cluster
-func (fsm *FSM) State() (consensus.State, error) {
+// getState returns the current state as agreed by the cluster
+func (fsm *FSM) getState() (consensus.State, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if !fsm.initialized {

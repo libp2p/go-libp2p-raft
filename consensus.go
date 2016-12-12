@@ -109,7 +109,7 @@ func (opLog *Consensus) CommitOp(op consensus.Op) (consensus.State, error) {
 // cannot be ensured to be that on which the rest of the system has
 // agreed-upon.
 func (opLog *Consensus) GetLogHead() (consensus.State, error) {
-	return opLog.fsm.State()
+	return opLog.fsm.getState()
 }
 
 // CommitState pushes a new state to the system and returns
