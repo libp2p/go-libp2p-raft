@@ -5,7 +5,7 @@
 //
 // The main entry points to this library are the Consensus and Actor
 // types. Usually, the first step is to create the Consensus, then
-// use the underlying FSM to initialize a Raft instance, along with
+// use the *Consensus.FSM() object to initialize a Raft instance, along with
 // the Libp2pTransport. With a Raft instance, an Actor can be
 // created and then used with Consensus.SetActor(). From this point,
 // the consensus system is ready to use.

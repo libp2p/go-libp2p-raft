@@ -63,7 +63,7 @@ func makeTestingRaft(node *Peer, peers []*Peer, op consensus.Op) (*raft.Raft, *C
 
 	// Raft node creation: we use our consensus objects directly as they
 	// implement Raft FSM interface.
-	raft, err := raft.NewRaft(config, consensus, logStore, logStore, snapshots, pstore, transport)
+	raft, err := raft.NewRaft(config, consensus.FSM(), logStore, logStore, snapshots, pstore, transport)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -165,15 +165,15 @@ func Example_consensus() {
 
 	// Raft node creation: we use our consensus objects directly as they
 	// implement Raft FSM interface.
-	raft1, err := raft.NewRaft(config, consensus1, logStore1, logStore1, snapshots1, pstore1, transport1)
+	raft1, err := raft.NewRaft(config, consensus1.FSM(), logStore1, logStore1, snapshots1, pstore1, transport1)
 	if err != nil {
 		log.Fatal(err)
 	}
-	raft2, err := raft.NewRaft(config, consensus2, logStore2, logStore2, snapshots2, pstore2, transport2)
+	raft2, err := raft.NewRaft(config, consensus2.FSM(), logStore2, logStore2, snapshots2, pstore2, transport2)
 	if err != nil {
 		log.Fatal(err)
 	}
-	raft3, err := raft.NewRaft(config, consensus3, logStore3, logStore3, snapshots3, pstore3, transport3)
+	raft3, err := raft.NewRaft(config, consensus3.FSM(), logStore3, logStore3, snapshots3, pstore3, transport3)
 	if err != nil {
 		log.Fatal(err)
 	}

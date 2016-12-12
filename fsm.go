@@ -13,11 +13,13 @@ import (
 
 var MaxSubscriberCh = 128
 
-// fsm implements a minimal raft.FSM that holds a generic consensus.State
+// FSM implements a minimal raft.FSM that holds a generic consensus.State
 // and applies generic Ops to it. The state can be serialized/deserialized,
 // snappshotted and restored.
-// fsm is used by Consensus to keep track of the state of an OpLog.
-type fsm struct {
+// FSM is used by Consensus to keep track of the state of an OpLog.
+// Please use the value returned by Consensus.FSM() to initialize Raft.
+// Do not use this object directly.
+type FSM struct {
 	state        consensus.State
 	op           consensus.Op
 	initialized  bool
@@ -30,7 +32,7 @@ type fsm struct {
 }
 
 // Apply is invoked by Raft once a log entry is commited. Do not use directly.
-func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
+func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 
@@ -75,7 +77,7 @@ func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 	return fsm.state
 }
 
-func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
+func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if !fsm.initialized {
@@ -97,7 +99,7 @@ func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	return snap, nil
 }
 
-func (fsm *fsm) Restore(reader io.ReadCloser) error {
+func (fsm *FSM) Restore(reader io.ReadCloser) error {
 	snapBytes, err := ioutil.ReadAll(reader)
 	if err != nil {
 		logger.Errorf("Error reading snapshot: %s", err)
@@ -115,8 +117,8 @@ func (fsm *fsm) Restore(reader io.ReadCloser) error {
 	return nil
 }
 
-// Subscribe returns a channel on which every new state is sent.
-func (fsm *fsm) Subscribe() <-chan consensus.State {
+// subscribe returns a channel on which every new state is sent.
+func (fsm *FSM) subscribe() <-chan consensus.State {
 	fsm.chMux.Lock()
 	defer fsm.chMux.Unlock()
 	if fsm.subscriberCh == nil {
@@ -125,8 +127,8 @@ func (fsm *fsm) Subscribe() <-chan consensus.State {
 	return fsm.subscriberCh
 }
 
-// Unsubscribe closes the channel returned upon Subscribe() (if any).
-func (fsm *fsm) Unsubscribe() {
+// unsubscribe closes the channel returned upon Subscribe() (if any).
+func (fsm *FSM) unsubscribe() {
 	fsm.chMux.Lock()
 	defer fsm.chMux.Unlock()
 	if fsm.subscriberCh != nil {
@@ -136,7 +138,7 @@ func (fsm *fsm) Unsubscribe() {
 }
 
 // State returns the current state as agreed by the cluster
-func (fsm *fsm) State() (consensus.State, error) {
+func (fsm *FSM) State() (consensus.State, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if !fsm.initialized {
@@ -148,7 +150,7 @@ func (fsm *fsm) State() (consensus.State, error) {
 	return fsm.state, nil
 }
 
-func (fsm *fsm) updateSubscribers(st consensus.State) {
+func (fsm *FSM) updateSubscribers(st consensus.State) {
 	fsm.chMux.Lock()
 	defer fsm.chMux.Unlock()
 	if fsm.subscriberCh != nil {
