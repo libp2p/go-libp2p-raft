@@ -17,11 +17,11 @@ func TestTransportSnapshots(t *testing.T) {
 	peers1 := []*Peer{peer2}
 	peers2 := []*Peer{peer1}
 
-	raft1, c1, tr1, err := makeTestingRaft(peer1, peers1)
+	raft1, c1, tr1, err := makeTestingRaft(peer1, peers1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raft2, c2, tr2, err := makeTestingRaft(peer2, peers2)
+	raft2, c2, tr2, err := makeTestingRaft(peer2, peers2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestTransportSnapshots(t *testing.T) {
 	tr2.Close()
 
 	t.Log("Forcing Raft1 to restore the snapshot")
-	raft1, c1, tr1, err = makeTestingRaft(peer1, peers1)
+	raft1, c1, tr1, err = makeTestingRaft(peer1, peers1, nil)
 	if err != nil {
 		t.Fatalf("raft1: %s", err)
 	}
@@ -78,7 +78,7 @@ func TestTransportSnapshots(t *testing.T) {
 	raftTmpFolder = "testing_tmp2"
 	defer os.RemoveAll("testing_tmp2")
 
-	raft2, c2, tr2, err = makeTestingRaft(peer2, peers2)
+	raft2, c2, tr2, err = makeTestingRaft(peer2, peers2, nil)
 	if err != nil {
 		t.Fatalf("raft2: %s", err)
 	}
@@ -102,12 +102,12 @@ func TestNewLibp2pTransportWithHost(t *testing.T) {
 	peers1 := []*Peer{peer2}
 	peers2 := []*Peer{peer1}
 
-	raft1, _, tr1, err := makeTestingRaft(peer1, peers1)
+	raft1, _, tr1, err := makeTestingRaft(peer1, peers1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer tr1.Close()
-	raft2, _, tr2, err := makeTestingRaft(peer2, peers2)
+	raft2, _, tr2, err := makeTestingRaft(peer2, peers2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

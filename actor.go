@@ -4,9 +4,10 @@ import (
 	"errors"
 	"time"
 
-	raft "github.com/hashicorp/raft"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	peer "github.com/libp2p/go-libp2p-peer"
+
+	raft "github.com/hashicorp/raft"
 )
 
 // SetStateTimeout specifies how long before giving up on setting a state
@@ -37,6 +38,18 @@ func NewActor(r *raft.Raft) *Actor {
 // Only the Raft leader can set the state. Otherwise, an error will
 // be returned.
 func (actor *Actor) SetState(newState consensus.State) (consensus.State, error) {
+	// figure out if this is an Op.
+	op, ok := newState.(consensus.Op)
+	if ok {
+		return actor.commitOp(op)
+	}
+	return actor.commitOp(consensusOp{newState})
+}
+
+// commitOp actually does the job of setting the state, which is simply
+// an opConsensus operation with the new state. Everything stated for SetState
+// applies here.
+func (actor *Actor) commitOp(op consensus.Op) (consensus.State, error) {
 	//log.Debug("Actor is applying state")
 	if actor.Raft == nil {
 		return nil, errors.New("this actor does not have a raft instance")
@@ -46,7 +59,7 @@ func (actor *Actor) SetState(newState consensus.State) (consensus.State, error) 
 		return nil, errors.New("this actor is not the leader")
 	}
 
-	bs, err := encodeState(newState)
+	bs, err := encodeOp(op)
 	if err != nil {
 		return nil, err
 	}

@@ -9,102 +9,83 @@ import (
 	consensus "github.com/libp2p/go-libp2p-consensus"
 
 	"github.com/hashicorp/raft"
-	codec "github.com/ugorji/go/codec"
 )
 
 var MaxSubscriberCh = 128
 
 // fsm implements a minimal raft.FSM that holds a generic consensus.State
-// so it can be serialized/deserialized, snappshotted and restored.
-// fsm is used by Consensus to keep track of the state of the system
+// and applies generic Ops to it. The state can be serialized/deserialized,
+// snappshotted and restored.
+// fsm is used by Consensus to keep track of the state of an OpLog.
 type fsm struct {
-	state consensus.State
-	valid bool
-	mux   sync.Mutex
+	state        consensus.State
+	op           consensus.Op
+	initialized  bool
+	inconsistent bool
+
+	mux sync.Mutex
 
 	subscriberCh chan consensus.State
 	chMux        sync.Mutex
 }
 
-// encodeState serializes a state
-func encodeState(state consensus.State) ([]byte, error) {
-	var buf []byte
-	enc := codec.NewEncoderBytes(&buf, &codec.MsgpackHandle{})
-	if err := enc.Encode(state); err != nil {
-		return nil, err
-	}
-	// enc := msgpack.Multicodec().NewEncoder(buffer)
-	// if err := enc.Encode(state); err != nil {
-	// 	return nil, err
-	// }
-	return buf, nil
-}
-
-// decodeState deserializes a state
-func decodeState(bs []byte, state *consensus.State) error {
-	dec := codec.NewDecoderBytes(bs, &codec.MsgpackHandle{})
-
-	if err := dec.Decode(state); err != nil {
-		return err
-	}
-
-	// buffer := bytes.NewBuffer(bs)
-	// dec := msgpack.MultiCodec().NewDecoder(buffer)
-	// if err := dec.Decode(state); err != nil {
-	// 	return err
-	// }
-	return nil
-}
-
-// Returns a new state which is a copy of the given one.
-// In order to copy it it serializes and deserializes it into a new
-// variable.
-func dupState(state consensus.State) (consensus.State, error) {
-	newState := state
-
-	// We encode and redecode on the new object
-	bs, err := encodeState(state)
-	if err != nil {
-		return nil, err
-	}
-
-	err = decodeState(bs, &newState)
-	if err != nil {
-		return nil, err
-	}
-
-	return newState, nil
-}
-
-// Apply is invoked once a log entry is commited. It deserializes a Raft log
-// entry and saves it as our new state which is returned. The new state
-// is then used by Raft to create the future which is returned by Raft.Apply()
-// The future is a copy of the fsm state so that the fsm suffers no side
-// effects from external modifications.
+// Apply is invoked by Raft once a log entry is commited. Do not use directly.
 func (fsm *fsm) Apply(rlog *raft.Log) interface{} {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 
-	if err := decodeState(rlog.Data, &fsm.state); err != nil {
-		logger.Error("error decoding state: ", err)
-		return nil
+	// What this does:
+	// - Check that we can deserialize an operation
+	//   - If yes -> ApplyTo() the state if it is consistent so far
+	//     - If ApplyTo() fails, return nil and mark state as inconsistent
+	//     - If ApplyTo() works, replace the state
+	//   - If no -> check if we can deserialize a consensusOp (rollbacks)
+	//     - If it fails -> return nil and mark the state inconsistent
+	//     - If it works -> replace the state and mark it as consistent
+	// - Notify subscribers of the new state and return it
+
+	var newState consensus.State
+
+	if err := decodeOp(rlog.Data, &fsm.op); err != nil {
+		// maybe it is a standard rollback
+		rollbackOp := consensus.Op(consensusOp{fsm.state})
+		err := decodeOp(rlog.Data, &rollbackOp)
+		if err != nil {
+			logger.Error("error decoding op: ", err)
+			fsm.inconsistent = true
+			return nil
+		}
+		//fmt.Printf("%+v\n", rollbackOp)
+		castedRollback := rollbackOp.(consensusOp)
+		newState = castedRollback.State
+		fsm.inconsistent = false
+	} else {
+		//fmt.Printf("%+v\n", fsm.op)
+		newState, err = fsm.op.ApplyTo(fsm.state)
+		if err != nil {
+			logger.Error("error applying Op to State")
+			fsm.inconsistent = true
+			return nil
+		}
 	}
+	fsm.state = newState
+	fsm.initialized = true
 
-	newState, err := dupState(fsm.state)
-	if err != nil {
-		logger.Error("error duplicating state to return it as future:", err)
-		return nil
-	}
-	fsm.valid = true
-
-	fsm.updateSubscribers(newState)
-
-	return newState
+	fsm.updateSubscribers(fsm.state)
+	return fsm.state
 }
 
 func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
+	if !fsm.initialized {
+		logger.Error("tried to snapshot uninitialized state")
+		return nil, errors.New("cannot snapshot unitialized state")
+	}
+	if fsm.inconsistent {
+		logger.Error("tried to snapshot inconsistent state")
+		return nil, errors.New("cannot snapshot inconsistent state")
+	}
 
 	// Encode the state
 	bytes, err := encodeState(fsm.state)
@@ -129,19 +110,42 @@ func (fsm *fsm) Restore(reader io.ReadCloser) error {
 		logger.Errorf("Error decoding snapshot: %s", err)
 		return err
 	}
-	fsm.valid = true
+	fsm.initialized = true
+	fsm.inconsistent = false
 	return nil
 }
 
-// State returns a copy of the state so that the fsm cannot be
-// messed with if the state is modified outside
+// Subscribe returns a channel on which every new state is sent.
+func (fsm *fsm) Subscribe() <-chan consensus.State {
+	fsm.chMux.Lock()
+	defer fsm.chMux.Unlock()
+	if fsm.subscriberCh == nil {
+		fsm.subscriberCh = make(chan consensus.State, MaxSubscriberCh)
+	}
+	return fsm.subscriberCh
+}
+
+// Unsubscribe closes the channel returned upon Subscribe() (if any).
+func (fsm *fsm) Unsubscribe() {
+	fsm.chMux.Lock()
+	defer fsm.chMux.Unlock()
+	if fsm.subscriberCh != nil {
+		close(fsm.subscriberCh)
+		fsm.subscriberCh = nil
+	}
+}
+
+// State returns the current state as agreed by the cluster
 func (fsm *fsm) State() (consensus.State, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if fsm.valid != true {
+	if !fsm.initialized {
 		return nil, errors.New("no state has been agreed upon yet")
 	}
-	return dupState(fsm.state)
+	if fsm.inconsistent {
+		return nil, errors.New("the state on this node is not consistent")
+	}
+	return fsm.state, nil
 }
 
 func (fsm *fsm) updateSubscribers(st consensus.State) {
