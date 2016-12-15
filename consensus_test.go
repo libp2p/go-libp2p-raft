@@ -64,7 +64,7 @@ func TestSubscribe(t *testing.T) {
 	c1.Subscribe() // cover multiple calls to subscribe
 	c2.Subscribe()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	if !actor1.IsLeader() && !actor2.IsLeader() {
 		t.Fatal("raft failed to declare a leader")

@@ -11,12 +11,8 @@ import (
 // interface is just a particular case of the OpLog interface,
 // where the operation applied holds the new version of the state
 // and replaces the current one with it.
-//
-// Furthermore, the Consensus type implements the Hashicorp
-// Raft FSM interface. It should be used to initialize Raft, which
-// can be later used as an Actor.
 type Consensus struct {
-	fsm
+	fsm   *FSM
 	actor consensus.Actor
 }
 
@@ -55,13 +51,22 @@ func NewConsensus(state consensus.State) *Consensus {
 // (with Op.ApplyTo()).
 // See the notes in CommitOp() for more information.
 func NewOpLog(state consensus.State, op consensus.Op) *Consensus {
-	con := new(Consensus)
-	con.state = state
-	con.op = op
-	con.initialized = false
-	con.inconsistent = false
-	con.subscriberCh = nil
-	return con
+	return &Consensus{
+		fsm: &FSM{
+			state:        state,
+			op:           op,
+			initialized:  false,
+			inconsistent: false,
+			subscriberCh: nil,
+		},
+		actor: nil,
+	}
+}
+
+// FSM returns the raft.FSM implementation provided by go-libp2p-raft. It is
+// necessary to initialize raft with this FSM.
+func (c *Consensus) FSM() *FSM {
+	return c.fsm
 }
 
 // SetActor changes the actor in charge of submitting new states to the system.
@@ -104,7 +109,7 @@ func (opLog *Consensus) CommitOp(op consensus.Op) (consensus.State, error) {
 // cannot be ensured to be that on which the rest of the system has
 // agreed-upon.
 func (opLog *Consensus) GetLogHead() (consensus.State, error) {
-	return opLog.State()
+	return opLog.fsm.getState()
 }
 
 // CommitState pushes a new state to the system and returns
@@ -123,4 +128,14 @@ func (c *Consensus) CommitState(state consensus.State) (consensus.State, error) 
 func (opLog *Consensus) Rollback(state consensus.State) error {
 	_, err := opLog.CommitState(state)
 	return err
+}
+
+// subscribe returns a channel on which every new state is sent.
+func (c *Consensus) Subscribe() <-chan consensus.State {
+	return c.fsm.subscribe()
+}
+
+// unsubscribe closes the channel returned upon Subscribe() (if any).
+func (c *Consensus) Unsubscribe() {
+	c.fsm.unsubscribe()
 }
