@@ -83,13 +83,14 @@ func (actor *Actor) IsLeader() bool {
 	return false
 }
 
-// Leader returns the LibP2P ID of the Raft leader.
-func (actor *Actor) Leader() peer.ID {
+// Leader returns the LibP2P ID of the Raft leader or an
+// error if there is no leader.
+func (actor *Actor) Leader() (peer.ID, error) {
 	// Leader as returned by Libp2pTransport.LocalAddr()
 	raftLeader := actor.Raft.Leader()
 	peerID, err := peer.IDB58Decode(raftLeader)
 	if err != nil {
-		panic(err)
+		return "", errors.New("Leader unknown or not existing yet")
 	}
-	return peerID
+	return peerID, nil
 }
