@@ -54,19 +54,19 @@ func TestSetState(t *testing.T) {
 	testLeader := func(actor *Actor) {
 		st, err := actor.SetState(raftState{"testingLeader"})
 		if err != nil {
-			t.Error("The leader should be able to set the state")
+			t.Error("the leader should be able to set the state")
 		}
 
 		rSt := st.(raftState)
 		if rSt.Msg != "testingLeader" {
-			t.Error("The returned state is not correct")
+			t.Error("the returned state is not correct")
 		}
 	}
 
 	testFollower := func(actor *Actor) {
 		st, err := actor.SetState(raftState{"testingFollower"})
 		if st != nil || err == nil {
-			t.Error("The follower should not be able to set the state")
+			t.Error("the follower should not be able to set the state")
 		}
 	}
 

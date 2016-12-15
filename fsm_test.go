@@ -46,16 +46,16 @@ func TestCodecs(t *testing.T) {
 	t.Logf("st: %v newst: %v", &st, &newst)
 
 	if st.A != newst.A || st.B != newst.B || st.C.D != newst.C.D {
-		t.Error("Dup object is different")
+		t.Error("dup object is different")
 	}
 
 	st.B = "adios"
 	if newst.B != "hola" {
-		t.Fatal("Side modifications")
+		t.Fatal("side modifications")
 	}
 
 	st.C.D = 6
 	if newst.C.D == 6 {
-		t.Fatal("Side modifications in nested object")
+		t.Fatal("side modifications in nested object")
 	}
 }

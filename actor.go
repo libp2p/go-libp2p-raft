@@ -50,7 +50,7 @@ func (actor *Actor) SetState(newState consensus.State) (consensus.State, error) 
 // an opConsensus operation with the new state. Everything stated for SetState
 // applies here.
 func (actor *Actor) commitOp(op consensus.Op) (consensus.State, error) {
-	//log.Debug("Actor is applying state")
+	//log.Debug("actor is applying state")
 	if actor.Raft == nil {
 		return nil, errors.New("this actor does not have a raft instance")
 	}
@@ -71,7 +71,7 @@ func (actor *Actor) commitOp(op consensus.Op) (consensus.State, error) {
 	err = applyFuture.Error()
 
 	futureResp := applyFuture.Response()
-	//log.Debugf("Apply future log entry index: %d", applyFuture.Index())
+	//log.Debugf("apply future log entry index: %d", applyFuture.Index())
 	return futureResp, nil
 }
 

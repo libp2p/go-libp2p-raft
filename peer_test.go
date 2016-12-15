@@ -46,9 +46,9 @@ func TestNewPeerFromMultiaddress(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(peer.Addrs) != 1 {
-		t.Fatal("Peer should have 1 address")
+		t.Fatal("peer should have 1 address")
 	}
 	if !peer.Addrs[0].Equal(addr2) {
-		t.Errorf("Wrong peer address: %s != %s", peer.Addrs[0], addr2)
+		t.Errorf("wrong peer address: %s != %s", peer.Addrs[0], addr2)
 	}
 }

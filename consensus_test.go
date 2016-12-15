@@ -87,13 +87,13 @@ func TestSubscribe(t *testing.T) {
 		select {
 		case st := <-subscriber1:
 			newSt := st.(raftState)
-			t.Log("Received state:", newSt.Msg)
+			t.Log("received state:", newSt.Msg)
 			if newSt.Msg != fmt.Sprintf("%d", i) {
-				t.Fatal("Expected a different state")
+				t.Fatal("expected a different state")
 			}
 		default:
 			if i < 5 {
-				t.Fatal("Expected to read something")
+				t.Fatal("expected to read something")
 			} else {
 				t.Log("subscriber1 channel is empty")
 			}
@@ -105,13 +105,13 @@ func TestSubscribe(t *testing.T) {
 		select {
 		case st := <-subscriber2:
 			newSt := st.(raftState)
-			t.Log("Received state:", newSt.Msg)
+			t.Log("received state:", newSt.Msg)
 			if newSt.Msg != fmt.Sprintf("%d", i) {
-				t.Fatal("Expected a different state")
+				t.Fatal("expected a different state")
 			}
 		default:
 			if i < 5 {
-				t.Fatal("Expected to read something")
+				t.Fatal("expected to read something")
 			} else {
 				t.Log("subscriber2 channel is empty")
 			}
@@ -217,13 +217,13 @@ func TestOpLog(t *testing.T) {
 	newSt1 = logHead1.(raftState)
 	t.Log(newSt1.Msg)
 	if newSt1.Msg != "Good as new" {
-		t.Error("Log head is not the result of a rollback")
+		t.Error("log head is not the result of a rollback")
 	}
 
 	newSt2 = logHead2.(raftState)
 	t.Log(newSt2.Msg)
 	if newSt2.Msg != "Good as new" {
-		t.Error("Log head is not the result of a rollback")
+		t.Error("log head is not the result of a rollback")
 	}
 }
 
@@ -304,12 +304,12 @@ func TestBadApplyAt(t *testing.T) {
 	newSt1 := logHead1.(raftState)
 	t.Log(newSt1.Msg)
 	if newSt1.Msg != "Good as new" {
-		t.Error("Log head is not the result of a rollback")
+		t.Error("log head is not the result of a rollback")
 	}
 
 	newSt2 := logHead2.(raftState)
 	t.Log(newSt2.Msg)
 	if newSt2.Msg != "Good as new" {
-		t.Error("Log head is not the result of a rollback")
+		t.Error("log head is not the result of a rollback")
 	}
 }

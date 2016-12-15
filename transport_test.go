@@ -52,7 +52,7 @@ func TestTransportSnapshots(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 
-	t.Log("Forcing Raft1 to take a snapshot")
+	t.Log("forcing Raft1 to take a snapshot")
 	// Force raft to take a snapshot
 	future := raft1.Snapshot()
 	err = future.Error() //wait for snapshot
@@ -65,7 +65,7 @@ func TestTransportSnapshots(t *testing.T) {
 	tr1.Close()
 	tr2.Close()
 
-	t.Log("Forcing Raft1 to restore the snapshot")
+	t.Log("forcing Raft1 to restore the snapshot")
 	raft1, c1, tr1, err = makeTestingRaft(peer1, peers1, nil)
 	if err != nil {
 		t.Fatalf("raft1: %s", err)

@@ -121,7 +121,6 @@ func wrapStream(s inet.Stream) *streamWrap {
 // slower startup, so OpenConns() offers a way to manually open those
 // connections.
 func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport, error) {
-	// TODO(hector): Connect to peers now to speed up startup and arise errors earlier.
 	ctx := context.Background()
 	ps := peerstore.NewPeerstore()
 	if localPeer.PublicKey != nil && localPeer.PrivateKey != nil {

@@ -100,14 +100,14 @@ func (fsm *fsm) Snapshot() (raft.FSMSnapshot, error) {
 func (fsm *fsm) Restore(reader io.ReadCloser) error {
 	snapBytes, err := ioutil.ReadAll(reader)
 	if err != nil {
-		logger.Errorf("Error reading snapshot: %s", err)
+		logger.Errorf("error reading snapshot: %s", err)
 		return err
 	}
 
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if err := decodeState(snapBytes, &fsm.state); err != nil {
-		logger.Errorf("Error decoding snapshot: %s", err)
+		logger.Errorf("error decoding snapshot: %s", err)
 		return err
 	}
 	fsm.initialized = true
