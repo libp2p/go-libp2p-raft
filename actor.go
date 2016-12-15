@@ -90,7 +90,7 @@ func (actor *Actor) Leader() (peer.ID, error) {
 	raftLeader := actor.Raft.Leader()
 	peerID, err := peer.IDB58Decode(raftLeader)
 	if err != nil {
-		return "", errors.New("Leader unknown or not existing yet")
+		return "", errors.New("leader unknown or not existing yet")
 	}
 	return peerID, nil
 }
