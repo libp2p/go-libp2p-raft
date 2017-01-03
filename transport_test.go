@@ -106,19 +106,21 @@ func TestNewLibp2pTransportWithHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tr1.Close()
+
 	raft2, _, tr2, err := makeTestingRaft(peer2, peers2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tr2.Close()
 
 	raft1.Shutdown()
 	raft2.Shutdown()
 
 	trWithHost1, err1 := NewLibp2pTransportWithHost(tr1.host)
-	defer trWithHost1.Close()
 	trWithHost2, err2 := NewLibp2pTransportWithHost(tr2.host)
+
+	defer tr1.Close() // This will shutdown the host
+	defer tr2.Close()
+	defer trWithHost1.Close() // This shutsdown transport but not host
 	defer trWithHost2.Close()
 
 	if err1 != nil || err2 != nil {

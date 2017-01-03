@@ -66,8 +66,10 @@ var (
 // (AppendPipeline). This ensures a connection (and a stream) will stay open
 // between peers and reduces the cost of opening/closing individual streams.
 type Libp2pTransport struct {
-	host p2phost.Host
-	ctx  context.Context
+	host    p2phost.Host
+	extHost bool
+
+	ctx context.Context
 
 	consumeCh chan raft.RPC
 
@@ -150,6 +152,7 @@ func NewLibp2pTransport(localPeer *Peer, clusterPeers []*Peer) (*Libp2pTransport
 
 	t := &Libp2pTransport{
 		host:       host,
+		extHost:    false,
 		ctx:        ctx,
 		consumeCh:  make(chan raft.RPC),
 		shutdownCh: make(chan struct{}),
@@ -175,6 +178,7 @@ func NewLibp2pTransportWithHost(host p2phost.Host) (*Libp2pTransport, error) {
 	ctx := context.Background()
 	t := &Libp2pTransport{
 		host:       host,
+		extHost:    true,
 		ctx:        ctx,
 		consumeCh:  make(chan raft.RPC),
 		shutdownCh: make(chan struct{}),
@@ -558,7 +562,10 @@ func (t *Libp2pTransport) Close() error {
 	if !t.shutdown {
 		close(t.shutdownCh)
 		t.shutdown = true
-		t.host.Close()
+		// Close the host only when it was created by us
+		if !t.extHost {
+			t.host.Close()
+		}
 	}
 	return nil
 }
