@@ -16,6 +16,18 @@
       "hash": "QmZ88KbrvZMJpXaNwAGffswcYKz8EbeafzAFGMCA6MEZKt",
       "name": "go-libp2p-consensus",
       "version": "0.0.3"
+    },
+    {
+      "author": "hashicorp",
+      "hash": "QmcqdQoV9LnszXJoqFYXxbs4BrKTfGQqrVs6aJjZxSVurX",
+      "name": "raft",
+      "version": "2017.1.3"
+    },
+    {
+      "author": "ugorji",
+      "hash": "QmRpRGNbrm6aaU7bnt6AwcJCfyETkdJzmtBdCazMYKoMux",
+      "name": "go-codec",
+      "version": "2017.1.3"
     }
   ],
   "gxVersion": "0.9.1",
