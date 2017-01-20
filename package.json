@@ -7,15 +7,27 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "QmbzCT1CwxVZ2ednptC9RavuJe7Bv8DDi2Ne89qUrA37XM",
+      "hash": "QmQHmMFyhfp2ZXnbYWqAWhEideDCNDM6hzJwqCU29Y5zV2",
       "name": "go-libp2p",
-      "version": "4.3.0"
+      "version": "4.3.1"
     },
     {
       "author": "hsanjuan",
       "hash": "QmZ88KbrvZMJpXaNwAGffswcYKz8EbeafzAFGMCA6MEZKt",
       "name": "go-libp2p-consensus",
       "version": "0.0.3"
+    },
+    {
+      "author": "hashicorp",
+      "hash": "QmWRzh5sntXhuZaxmGDEjjBhg1nX7DgaMdhBeik42LZdEv",
+      "name": "raft",
+      "version": "2017.1.3"
+    },
+    {
+      "author": "ugorji",
+      "hash": "QmRpRGNbrm6aaU7bnt6AwcJCfyETkdJzmtBdCazMYKoMux",
+      "name": "go-codec",
+      "version": "2017.1.3"
     }
   ],
   "gxVersion": "0.9.1",
