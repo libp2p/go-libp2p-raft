@@ -7,9 +7,9 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "QmQHmMFyhfp2ZXnbYWqAWhEideDCNDM6hzJwqCU29Y5zV2",
+      "hash": "QmdzDdLZ7nj133QvNHypyS9Y39g35bMFk5DJ2pmX7YqtKU",
       "name": "go-libp2p",
-      "version": "4.3.1"
+      "version": "4.3.5"
     },
     {
       "author": "hsanjuan",
@@ -35,6 +35,6 @@
   "license": "",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.0.1"
+  "version": "1.0.2"
 }
 
