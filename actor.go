@@ -72,7 +72,7 @@ func (actor *Actor) commitOp(op consensus.Op) (consensus.State, error) {
 
 	futureResp := applyFuture.Response()
 	//log.Debugf("apply future log entry index: %d", applyFuture.Index())
-	return futureResp, nil
+	return futureResp, err
 }
 
 // IsLeader returns of the current actor is Raft leader

@@ -1,73 +1,50 @@
 package libp2praft
 
 import (
-	consensus "github.com/libp2p/go-libp2p-consensus"
+	"bytes"
 
-	"github.com/ugorji/go/codec"
+	consensus "github.com/libp2p/go-libp2p-consensus"
+	msgpack "github.com/multiformats/go-multicodec/msgpack"
 )
 
 // encodeState serializes a state
 func encodeState(state consensus.State) ([]byte, error) {
-	var buf []byte
-	enc := codec.NewEncoderBytes(&buf, &codec.MsgpackHandle{})
+	buf := new(bytes.Buffer)
+	enc := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Encoder(buf)
 	if err := enc.Encode(state); err != nil {
 		return nil, err
 	}
-	// enc := msgpack.Multicodec().NewEncoder(buffer)
-	// if err := enc.Encode(state); err != nil {
-	// 	return nil, err
-	// }
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 // decodeState deserializes a state
 func decodeState(bs []byte, state *consensus.State) error {
-	h := codec.MsgpackHandle{}
-	h.ErrorIfNoField = true
-	dec := codec.NewDecoderBytes(bs, &h)
-
+	buf := bytes.NewBuffer(bs)
+	dec := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Decoder(buf)
 	if err := dec.Decode(state); err != nil {
 		return err
 	}
-
-	// buffer := bytes.NewBuffer(bs)
-	// dec := msgpack.MultiCodec().NewDecoder(buffer)
-	// if err := dec.Decode(state); err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
 // encodeOp serializes an op
 func encodeOp(op consensus.Op) ([]byte, error) {
-	var buf []byte
-	enc := codec.NewEncoderBytes(&buf, &codec.MsgpackHandle{})
+	buf := new(bytes.Buffer)
+	enc := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Encoder(buf)
 	if err := enc.Encode(op); err != nil {
 		return nil, err
 	}
-
-	// enc := msgpack.Multicodec().NewEncoder(buffer)
-	// if err := enc.Encode(state); err != nil {
-	// 	return nil, err
-	// }
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 // decodeOp deserializes a op
-func decodeOp(bs []byte, op *consensus.Op) error {
-	h := codec.MsgpackHandle{}
-	// Important, allows to handle rollbacks
+func decodeOp(bs []byte, op *consensus.Op) (err error) {
+	buf := bytes.NewBuffer(bs)
+	h := msgpack.DefaultMsgpackHandle()
 	h.ErrorIfNoField = true
-	dec := codec.NewDecoderBytes(bs, &h)
-
-	if err := dec.Decode(op); err != nil {
+	dec := msgpack.Multicodec(h).Decoder(buf)
+	if err = dec.Decode(op); err != nil {
 		return err
 	}
-
-	// buffer := bytes.NewBuffer(bs)
-	// dec := msgpack.MultiCodec().NewDecoder(buffer)
-	// if err := dec.Decode(state); err != nil {
-	// 	return err
-	// }
 	return nil
 }

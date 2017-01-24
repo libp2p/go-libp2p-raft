@@ -1,6 +1,8 @@
 {
   "author": "hsanjuan",
-  "bugs": {},
+  "bugs": {
+    "url": "https://github.com/libp2p/go-libp2p-raft"
+  },
   "gx": {
     "dvcsimport": "github.com/libp2p/go-libp2p-raft"
   },
@@ -24,15 +26,15 @@
       "version": "2017.1.3"
     },
     {
-      "author": "ugorji",
-      "hash": "QmRpRGNbrm6aaU7bnt6AwcJCfyETkdJzmtBdCazMYKoMux",
-      "name": "go-codec",
-      "version": "2017.1.3"
+      "author": "multiformats",
+      "hash": "QmX3juUTtwwQ6fKXp6VeLWwx24ZT2zASKNJRdg25GtY96N",
+      "name": "go-multicodec",
+      "version": "0.1.1"
     }
   ],
-  "gxVersion": "0.9.1",
+  "gxVersion": "0.10.0",
   "language": "go",
-  "license": "",
+  "license": "MIT",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
   "version": "1.0.2"
