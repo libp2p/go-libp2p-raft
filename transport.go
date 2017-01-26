@@ -34,10 +34,10 @@ const (
 
 	// RaftProtocol is the name of the protocol used for handling
 	// single RPC commands
-	RaftProtocol protocol.ID = "/raft/1.0.1/rpc"
+	RaftProtocol protocol.ID = "/raft/1.0.0/rpc"
 	// RaftPipelineProtocol is the name of the protocol used for
 	// handling Raft pipilined requests
-	RaftPipelineProtocol protocol.ID = "/raft/1.0.1/pipeline"
+	RaftPipelineProtocol protocol.ID = "/raft/1.0.0/pipeline"
 
 	rpcMaxPipeline = 256
 )
