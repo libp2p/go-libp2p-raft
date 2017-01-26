@@ -54,7 +54,7 @@ func TestSetState(t *testing.T) {
 	testLeader := func(actor *Actor) {
 		st, err := actor.SetState(raftState{"testingLeader"})
 		if err != nil {
-			t.Error("the leader should be able to set the state")
+			t.Fatal("the leader should be able to set the state")
 		}
 
 		rSt := st.(raftState)
