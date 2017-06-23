@@ -9,9 +9,9 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "QmSNJRX4uphb3Eyp69uYbpRVvgqjPxfjnJmjcdMWkDH5Pn",
+      "hash": "QmQA5mdxru8Bh6dpC9PJfSkumqnmHgJX7knxSgBo5Lpime",
       "name": "go-libp2p",
-      "version": "4.3.9"
+      "version": "4.3.12"
     },
     {
       "author": "hsanjuan",
@@ -27,9 +27,9 @@
     },
     {
       "author": "multiformats",
-      "hash": "QmX3juUTtwwQ6fKXp6VeLWwx24ZT2zASKNJRdg25GtY96N",
+      "hash": "QmVRuqGJ881CFiNLgwWSfRVjTjqQ6FeCNufkftNC4fpACZ",
       "name": "go-multicodec",
-      "version": "0.1.1"
+      "version": "0.1.2"
     }
   ],
   "gxVersion": "0.10.0",
