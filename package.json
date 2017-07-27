@@ -21,9 +21,9 @@
     },
     {
       "author": "hashicorp",
-      "hash": "QmWRzh5sntXhuZaxmGDEjjBhg1nX7DgaMdhBeik42LZdEv",
+      "hash": "QmSJ8rR1W4e7azaLpzw811vMdqJgVwKsPZqHpqbAYzauap",
       "name": "raft",
-      "version": "2017.1.3"
+      "version": "2017.7.27"
     },
     {
       "author": "multiformats",
