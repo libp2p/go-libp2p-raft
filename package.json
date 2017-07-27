@@ -37,6 +37,6 @@
   "license": "MIT",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.0.5"
+  "version": "1.0.6"
 }
 
