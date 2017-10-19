@@ -1,13 +1,22 @@
 package libp2praft
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"testing"
 	"time"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	host "github.com/libp2p/go-libp2p-host"
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	multiaddr "github.com/multiformats/go-multiaddr"
 
 	"github.com/hashicorp/raft"
 )
@@ -28,46 +37,120 @@ func (o testOperation) ApplyTo(s consensus.State) (consensus.State, error) {
 	return raftState{Msg: raftSt.Msg + o.Append}, nil
 }
 
-// Create a quick raft instance
-func makeTestingRaft(node *Peer, peers []*Peer, op consensus.Op) (*raft.Raft, *Consensus, *Libp2pTransport, error) {
-	pstore := &Peerstore{}
-	pstore.SetRaftPeers(peers)
+// wait 10 seconds for a leader.
+func waitForLeader(t *testing.T, r *raft.Raft) {
+	obsCh := make(chan raft.Observation, 1)
+	observer := raft.NewObserver(obsCh, true, nil)
+	r.RegisterObserver(observer)
+	defer r.DeregisterObserver(observer)
 
-	// Create LibP2P transports Raft
-	transport, err := NewLibp2pTransport(node, peers)
-	if err != nil {
-		return nil, nil, nil, err
+	// New Raft does not allow leader observation directy
+	// What's worse, there will be no notification that a new
+	// leader was elected because observations are set before
+	// setting the Leader and only when the RaftState has changed.
+	// Therefore, we need a ticker.
+
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ticker := time.NewTicker(time.Second / 2)
+	defer ticker.Stop()
+	for {
+		select {
+		case obs := <-obsCh:
+			switch obs.Data.(type) {
+			case raft.RaftState:
+				if r.Leader() != "" {
+					return
+				}
+			}
+		case <-ticker.C:
+			if r.Leader() != "" {
+				return
+			}
+		case <-ctx.Done():
+			t.Fatal("timed out waiting for Leader")
+		}
 	}
+}
 
+func shutdown(t *testing.T, r *raft.Raft) {
+	err := r.Shutdown().Error()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Create a quick raft instance
+func makeTestingRaft(t *testing.T, h host.Host, pids []peer.ID, op consensus.Op) (*raft.Raft, *Consensus, *raft.NetworkTransport) {
+	// -- Create the consensus with no actor attached
 	var consensus *Consensus
 	if op != nil {
 		consensus = NewOpLog(raftState{}, op)
 	} else {
 		consensus = NewConsensus(raftState{"i am not consensuated"})
 	}
+	// --
 
-	// Hashicorp/raft initialization
+	// -- Create Raft servers configuration
+	servers := make([]raft.Server, len(pids))
+	for i, pid := range pids {
+		servers[i] = raft.Server{
+			Suffrage: raft.Voter,
+			ID:       raft.ServerID(pid.Pretty()),
+			Address:  raft.ServerAddress(pid.Pretty()),
+		}
+	}
+	serverConfig := raft.Configuration{
+		Servers: servers,
+	}
+	// --
+
+	// -- Create LibP2P transports Raft
+	transport, err := NewLibp2pTransport(h, 2*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// --
+
+	// -- Configuration
 	config := raft.DefaultConfig()
 	if raftQuiet {
 		config.LogOutput = ioutil.Discard
 		config.Logger = nil
 	}
-	// SnapshotStore
+	config.LocalID = raft.ServerID(h.ID().Pretty())
+	// --
+
+	// -- SnapshotStore
 	snapshots, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
 	if err != nil {
-		return nil, nil, nil, err
+		t.Fatal(err)
 	}
 
-	// Create the log store and stable store.
+	// -- Log store and stable store: we use inmem.
 	logStore := raft.NewInmemStore()
+	// --
 
-	// Raft node creation: we use our consensus objects directly as they
-	// implement Raft FSM interface.
-	raft, err := raft.NewRaft(config, consensus.FSM(), logStore, logStore, snapshots, pstore, transport)
+	// -- Boostrap everything if necessary
+	bootstrapped, err := raft.HasExistingState(logStore, logStore, snapshots)
 	if err != nil {
-		return nil, nil, nil, err
+		t.Fatal(err)
 	}
-	return raft, consensus, transport, nil
+
+	if !bootstrapped {
+		// Bootstrap cluster first
+		raft.BootstrapCluster(config, logStore, logStore, snapshots, transport, serverConfig)
+	} else {
+		t.Log("Already initialized!!")
+	}
+	// --
+
+	// Create Raft instance. Our consensus.FSM() provides raft.FSM
+	// implementation
+	raft, err := raft.NewRaft(config, consensus.FSM(), logStore, logStore, snapshots, transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raft, consensus, transport
 }
 
 func Example_consensus() {
@@ -77,8 +160,8 @@ func Example_consensus() {
 	// lets the cluster leader repeteadly update the state. At the
 	// end of the execution we verify that all members have agreed on the
 	// same state.
-
-	raftTmpFolder := "raft_example_tmp" // deleted at the end
+	//
+	// Some some error handling has been excluded for simplicity
 
 	// Declare an object which represents the State.
 	// Note that State objects should have public/exported fields,
@@ -87,51 +170,38 @@ func Example_consensus() {
 		Value int
 	}
 
-	// Create peers and add them to Raft peerstores
-	peer1, _ := NewRandomPeer(9997)
-	peer2, _ := NewRandomPeer(9998)
-	peer3, _ := NewRandomPeer(9999)
-	peers1 := []*Peer{peer2, peer3}
-	peers2 := []*Peer{peer1, peer3}
-	peers3 := []*Peer{peer1, peer2}
+	// error handling ommitted
+	newPeer := func(listenPort int) host.Host {
+		priv, pub, _ := crypto.GenerateKeyPair(crypto.RSA, 2048)
+		pid, _ := peer.IDFromPublicKey(pub)
+		maddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))
+		ctx := context.Background()
+		ps := peerstore.NewPeerstore()
+		ps.AddPubKey(pid, pub)
+		ps.AddPrivKey(pid, priv)
+		network, _ := swarm.NewNetwork(
+			ctx,
+			[]multiaddr.Multiaddr{maddr},
+			pid,
+			ps,
+			nil)
 
-	pstore1 := &Peerstore{}
-	pstore2 := &Peerstore{}
-	pstore3 := &Peerstore{}
-	pstore1.SetRaftPeers(peers1)
-	pstore2.SetRaftPeers(peers2)
-	pstore3.SetRaftPeers(peers3)
+		return basichost.New(network)
+	}
 
-	// Create LibP2P transports Raft
-	transport1, err := NewLibp2pTransport(peer1, peers1)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	transport2, err := NewLibp2pTransport(peer2, peers2)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	transport3, err := NewLibp2pTransport(peer3, peers3)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer transport1.Close()
-	defer transport2.Close()
-	defer transport3.Close()
-
-	// Warm up
-	if err := transport1.OpenConns(); err != nil {
-		log.Fatal(err)
-	}
-	if err := transport2.OpenConns(); err != nil {
-		log.Fatal(err)
-	}
-	if err := transport3.OpenConns(); err != nil {
-		log.Fatal(err)
-	}
+	// Create peers and make sure they know about each others.
+	peer1 := newPeer(9997)
+	peer2 := newPeer(9998)
+	peer3 := newPeer(9999)
+	defer peer1.Close()
+	defer peer2.Close()
+	defer peer3.Close()
+	peer1.Peerstore().AddAddrs(peer2.ID(), peer2.Addrs(), peerstore.PermanentAddrTTL)
+	peer1.Peerstore().AddAddrs(peer3.ID(), peer3.Addrs(), peerstore.PermanentAddrTTL)
+	peer2.Peerstore().AddAddrs(peer1.ID(), peer1.Addrs(), peerstore.PermanentAddrTTL)
+	peer2.Peerstore().AddAddrs(peer3.ID(), peer3.Addrs(), peerstore.PermanentAddrTTL)
+	peer3.Peerstore().AddAddrs(peer1.ID(), peer1.Addrs(), peerstore.PermanentAddrTTL)
+	peer3.Peerstore().AddAddrs(peer2.ID(), peer2.Addrs(), peerstore.PermanentAddrTTL)
 
 	// Create the consensus instances and initialize them with a state.
 	// Note that state is just used for local initialization, and that,
@@ -141,49 +211,102 @@ func Example_consensus() {
 	consensus2 := NewConsensus(raftState{3})
 	consensus3 := NewConsensus(raftState{3})
 
-	// Hashicorp/raft initialization
-	config := raft.DefaultConfig()
-	config.LogOutput = ioutil.Discard
-	config.Logger = nil
-	// SnapshotStore
-	snapshots1, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
+	// Create LibP2P transports Raft
+	transport1, err := NewLibp2pTransport(peer1, time.Minute)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	transport2, err := NewLibp2pTransport(peer2, time.Minute)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	transport3, err := NewLibp2pTransport(peer3, time.Minute)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer transport1.Close()
+	defer transport2.Close()
+	defer transport3.Close()
+
+	// Create Raft servers configuration for bootstrapping the cluster
+	// Note that both IDs and Address are set to the Peer ID.
+	servers := make([]raft.Server, 0)
+	for _, h := range []host.Host{peer1, peer2, peer3} {
+		servers = append(servers, raft.Server{
+			Suffrage: raft.Voter,
+			ID:       raft.ServerID(h.ID().Pretty()),
+			Address:  raft.ServerAddress(h.ID().Pretty()),
+		})
+	}
+	serversCfg := raft.Configuration{servers}
+
+	// Create Raft Configs. The Local ID is the PeerOID
+	config1 := raft.DefaultConfig()
+	config1.LogOutput = ioutil.Discard
+	config1.Logger = nil
+	config1.LocalID = raft.ServerID(peer1.ID().Pretty())
+
+	config2 := raft.DefaultConfig()
+	config2.LogOutput = ioutil.Discard
+	config2.Logger = nil
+	config2.LocalID = raft.ServerID(peer2.ID().Pretty())
+
+	config3 := raft.DefaultConfig()
+	config3.LogOutput = ioutil.Discard
+	config3.Logger = nil
+	config3.LocalID = raft.ServerID(peer3.ID().Pretty())
+
+	// Create snapshotStores
+	snapshots1, err := raft.NewFileSnapshotStore("example_data1", 3, nil)
 	if err != nil {
 		log.Fatal("file snapshot store:", err)
 	}
-	snapshots2, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
+	snapshots2, err := raft.NewFileSnapshotStore("example_data2", 3, nil)
 	if err != nil {
 		log.Fatal("file snapshot store:", err)
 	}
-	snapshots3, err := raft.NewFileSnapshotStore(raftTmpFolder, 3, nil)
+	snapshots3, err := raft.NewFileSnapshotStore("example_data3", 3, nil)
 	if err != nil {
 		log.Fatal("file snapshot store:", err)
 	}
-	// Create the log store and stable store.
+	defer os.RemoveAll("example_data1")
+	defer os.RemoveAll("example_data2")
+	defer os.RemoveAll("example_data3")
+
+	// Create the InmemStores for use as log store and stable store.
 	logStore1 := raft.NewInmemStore()
 	logStore2 := raft.NewInmemStore()
 	logStore3 := raft.NewInmemStore()
 
-	// Raft node creation: we use our consensus objects directly as they
-	// implement Raft FSM interface.
-	raft1, err := raft.NewRaft(config, consensus1.FSM(), logStore1, logStore1, snapshots1, pstore1, transport1)
+	// Bootsrap the stores with the serverConfigs
+	raft.BootstrapCluster(config1, logStore1, logStore1, snapshots1, transport1, serversCfg.Clone())
+	raft.BootstrapCluster(config2, logStore2, logStore2, snapshots2, transport2, serversCfg.Clone())
+	raft.BootstrapCluster(config3, logStore3, logStore3, snapshots3, transport3, serversCfg.Clone())
+
+	// Create Raft objects. Our consensus provides an implementation of
+	// Raft.FSM
+	raft1, err := raft.NewRaft(config1, consensus1.FSM(), logStore1, logStore1, snapshots1, transport1)
 	if err != nil {
 		log.Fatal(err)
 	}
-	raft2, err := raft.NewRaft(config, consensus2.FSM(), logStore2, logStore2, snapshots2, pstore2, transport2)
+	raft2, err := raft.NewRaft(config2, consensus2.FSM(), logStore2, logStore2, snapshots2, transport2)
 	if err != nil {
 		log.Fatal(err)
 	}
-	raft3, err := raft.NewRaft(config, consensus3.FSM(), logStore3, logStore3, snapshots3, pstore3, transport3)
+	raft3, err := raft.NewRaft(config3, consensus3.FSM(), logStore3, logStore3, snapshots3, transport3)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// We create the actors using the Raft nodes
+	// Create the actors using the Raft nodes
 	actor1 := NewActor(raft1)
 	actor2 := NewActor(raft2)
 	actor3 := NewActor(raft3)
 
-	// We set the actors so that we can CommitState() and GetCurrentState()
+	// Set the actors so that we can CommitState() and GetCurrentState()
 	consensus1.SetActor(actor1)
 	consensus2.SetActor(actor2)
 	consensus3.SetActor(actor3)
@@ -220,9 +343,10 @@ func Example_consensus() {
 	}
 
 	// Provide some time for leader election
-	time.Sleep(4 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Run the 1000 updates on the leader
+	// Barrier() will wait until updates have been applied
 	if actor1.IsLeader() {
 		updateState(consensus1)
 	} else if actor2.IsLeader() {
@@ -231,14 +355,14 @@ func Example_consensus() {
 		updateState(consensus3)
 	}
 
-	// Provide some time for all nodes to catch up
-	time.Sleep(2 * time.Second)
+	// Wait for updates to arrive.
+	time.Sleep(5 * time.Second)
+
 	// Shutdown raft and wait for it to complete
 	// (ignoring errors)
 	raft1.Shutdown().Error()
 	raft2.Shutdown().Error()
 	raft3.Shutdown().Error()
-	os.RemoveAll(raftTmpFolder)
 
 	// Final states
 	finalState1, err := consensus1.GetCurrentState()
