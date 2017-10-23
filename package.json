@@ -33,9 +33,9 @@
     },
     {
       "author": "hsanjuan",
-      "hash": "QmTzEMB3KPRXLmMvkGjQyKhnD69WL6uhza9KumL8tW72EZ",
+      "hash": "QmQWA6FEfEhPymuQfWRKcJNt3tkHXf9LLLoVScS3Eg87ag",
       "name": "go-libp2p-gostream",
-      "version": "0.0.2"
+      "version": "0.0.3"
     }
   ],
   "gxVersion": "0.10.0",
