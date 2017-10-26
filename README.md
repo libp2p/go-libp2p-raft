@@ -24,11 +24,11 @@
 
 [Raft is a fault-tolerant consensus algorithm](https://raft.github.io/) that allows a number of peers to agree on a State. Each peer can submit updates to that State, which are then distributed and agreed upon.
 
-[Hashicorp's Raft](https://github.com/hashicorp/raft) is a mature implementation of the algorithm, which includes a number of performance improvements over the original version and a modular that allows to replace pieces of the system with custom implementations.
+[Hashicorp's Raft](https://github.com/hashicorp/raft) is a mature implementation of the algorithm, which includes a number of performance improvements over the original version and a modular approach that allows to replace pieces of the system with custom implementations.
 
 [LibP2P](https://github.com/libp2p) provides a modular peer-to-peer networking stack, which simplifies the networking layer by adding features like generic addressing, secure channels, protocol multiplexing over single connections or nat traversal in a standarized fashion.
 
-`go-libp2p-raft` uses Hashicorp's Raft implementation and provides a transport layer LibP2P for it. At the same time, it wraps the whole system with an implementation of the `go-libp2p-consensus` interface, ensuring any applications relying on it can easily swap it for a different one.
+`go-libp2p-raft` uses Hashicorp's Raft implementation and provides a LibP2P-based network transport for it. At the same time, it wraps the whole system with an implementation of the `go-libp2p-consensus` interface, ensuring any applications relying on it can easily swap it for a different one.
 
 In short, `go-libp2p-raft`:
 

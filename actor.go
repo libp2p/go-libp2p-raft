@@ -43,7 +43,7 @@ func (actor *Actor) SetState(newState consensus.State) (consensus.State, error) 
 	if ok {
 		return actor.commitOp(op)
 	}
-	return actor.commitOp(consensusOp{newState})
+	return actor.commitOp(stateOp{newState})
 }
 
 // commitOp actually does the job of setting the state, which is simply
@@ -87,7 +87,7 @@ func (actor *Actor) IsLeader() bool {
 // error if there is no leader.
 func (actor *Actor) Leader() (peer.ID, error) {
 	// Leader as returned by Libp2pTransport.LocalAddr()
-	raftLeader := actor.Raft.Leader()
+	raftLeader := string(actor.Raft.Leader())
 	peerID, err := peer.IDB58Decode(raftLeader)
 	if err != nil {
 		return "", errors.New("leader unknown or not existing yet")

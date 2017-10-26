@@ -1,6 +1,7 @@
 package libp2praft
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -8,7 +9,63 @@ import (
 	"time"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	host "github.com/libp2p/go-libp2p-host"
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	multiaddr "github.com/multiformats/go-multiaddr"
 )
+
+// newRandomHost returns a peer which listens on the given tcp port
+// on localhost.
+func newRandomHost(listenPort int, t *testing.T) host.Host {
+	priv, pub, err := crypto.GenerateKeyPair(crypto.RSA, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid, err := peer.IDFromPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	maddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	ps := peerstore.NewPeerstore()
+	err = ps.AddPubKey(pid, pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ps.AddPrivKey(pid, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	network, err := swarm.NewNetwork(
+		ctx,
+		[]multiaddr.Multiaddr{maddr},
+		pid,
+		ps,
+		nil)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return bhost.New(network)
+}
+
+func makeTwoPeers(t *testing.T) (h1 host.Host, h2 host.Host, pids []peer.ID) {
+	h1 = newRandomHost(9997, t)
+	h2 = newRandomHost(9998, t)
+	h1.Peerstore().AddAddrs(h2.ID(), h2.Addrs(), peerstore.PermanentAddrTTL)
+	h2.Peerstore().AddAddrs(h1.ID(), h1.Addrs(), peerstore.PermanentAddrTTL)
+	pids = []peer.ID{h1.ID(), h2.ID()}
+	return
+}
 
 // TestNewConsensus sees that a new consensus object works as expected
 func TestNewConsensus(t *testing.T) {
@@ -34,22 +91,14 @@ func TestNewConsensus(t *testing.T) {
 }
 
 func TestSubscribe(t *testing.T) {
-	peer1, _ := NewRandomPeer(9997)
-	peer2, _ := NewRandomPeer(9998)
-	peers1 := []*Peer{peer2}
-	peers2 := []*Peer{peer1}
-
-	raft1, c1, tr1, err := makeTestingRaft(peer1, peers1, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft1.Shutdown()
+	peer1, peer2, pids := makeTwoPeers(t)
+	defer peer1.Close()
+	defer peer2.Close()
+	raft1, c1, tr1 := makeTestingRaft(t, peer1, pids, nil)
+	defer shutdown(t, raft1)
 	defer tr1.Close()
-	raft2, c2, tr2, err := makeTestingRaft(peer2, peers2, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft2.Shutdown()
+	raft2, c2, tr2 := makeTestingRaft(t, peer2, pids, nil)
+	defer shutdown(t, raft2)
 	defer tr2.Close()
 	defer os.RemoveAll(raftTmpFolder)
 
@@ -64,11 +113,7 @@ func TestSubscribe(t *testing.T) {
 	c1.Subscribe() // cover multiple calls to subscribe
 	c2.Subscribe()
 
-	time.Sleep(3 * time.Second)
-
-	if !actor1.IsLeader() && !actor2.IsLeader() {
-		t.Fatal("raft failed to declare a leader")
-	}
+	waitForLeader(t, raft1)
 
 	updateState := func(c *Consensus) {
 		for i := 0; i < 5; i++ {
@@ -126,22 +171,14 @@ func TestSubscribe(t *testing.T) {
 }
 
 func TestOpLog(t *testing.T) {
-	peer1, _ := NewRandomPeer(9997)
-	peer2, _ := NewRandomPeer(9998)
-	peers1 := []*Peer{peer2}
-	peers2 := []*Peer{peer1}
-
-	raft1, opLog1, tr1, err := makeTestingRaft(peer1, peers1, testOperation{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft1.Shutdown()
+	peer1, peer2, pids := makeTwoPeers(t)
+	defer peer1.Close()
+	defer peer2.Close()
+	raft1, opLog1, tr1 := makeTestingRaft(t, peer1, pids, testOperation{})
+	defer shutdown(t, raft1)
 	defer tr1.Close()
-	raft2, opLog2, tr2, err := makeTestingRaft(peer2, peers2, testOperation{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft2.Shutdown()
+	raft2, opLog2, tr2 := makeTestingRaft(t, peer2, pids, testOperation{})
+	defer shutdown(t, raft2)
 	defer tr2.Close()
 	defer os.RemoveAll(raftTmpFolder)
 
@@ -150,11 +187,7 @@ func TestOpLog(t *testing.T) {
 	opLog1.SetActor(actor1)
 	opLog2.SetActor(actor2)
 
-	time.Sleep(3 * time.Second)
-
-	if !actor1.IsLeader() && !actor2.IsLeader() {
-		t.Fatal("raft failed to declare a leader")
-	}
+	waitForLeader(t, raft1)
 
 	testCommitOps := func(opLog *Consensus) {
 		op := testOperation{"I have "}
@@ -235,22 +268,14 @@ func (b badOp) ApplyTo(s consensus.State) (consensus.State, error) {
 }
 
 func TestBadApplyAt(t *testing.T) {
-	peer1, _ := NewRandomPeer(9997)
-	peer2, _ := NewRandomPeer(9998)
-	peers1 := []*Peer{peer2}
-	peers2 := []*Peer{peer1}
-
-	raft1, opLog1, tr1, err := makeTestingRaft(peer1, peers1, badOp{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft1.Shutdown()
+	peer1, peer2, pids := makeTwoPeers(t)
+	defer peer1.Close()
+	defer peer2.Close()
+	raft1, opLog1, tr1 := makeTestingRaft(t, peer1, pids, badOp{})
+	defer shutdown(t, raft1)
 	defer tr1.Close()
-	raft2, opLog2, tr2, err := makeTestingRaft(peer2, peers2, badOp{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft2.Shutdown()
+	raft2, opLog2, tr2 := makeTestingRaft(t, peer2, pids, badOp{})
+	defer shutdown(t, raft2)
 	defer tr2.Close()
 	defer os.RemoveAll(raftTmpFolder)
 
@@ -259,11 +284,7 @@ func TestBadApplyAt(t *testing.T) {
 	opLog1.SetActor(actor1)
 	opLog2.SetActor(actor2)
 
-	time.Sleep(3 * time.Second)
-
-	if !actor1.IsLeader() && !actor2.IsLeader() {
-		t.Fatal("raft failed to declare a leader")
-	}
+	waitForLeader(t, raft1)
 
 	op := badOp{}
 	// Only leader will succeed

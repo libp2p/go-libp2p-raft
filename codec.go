@@ -37,7 +37,10 @@ func encodeOp(op consensus.Op) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// decodeOp deserializes a op
+// decodeOp deserializes an op
+// ErrorIfNoField needs to be true so we can identify between standard
+// operations and rollback operations in fsm.Apply(). If this did not fail
+// we'd have to find a different way of identifying a rollback.
 func decodeOp(bs []byte, op *consensus.Op) (err error) {
 	buf := bytes.NewBuffer(bs)
 	h := msgpack.DefaultMsgpackHandle()

@@ -3,7 +3,6 @@ package libp2praft
 import (
 	"os"
 	"testing"
-	"time"
 )
 
 func TestNewActor(t *testing.T) {
@@ -20,34 +19,21 @@ func TestNewActor(t *testing.T) {
 }
 
 func TestSetState(t *testing.T) {
-	peer1, _ := NewRandomPeer(9997)
-	peer2, _ := NewRandomPeer(9998)
-	peers1 := []*Peer{peer2}
-	peers2 := []*Peer{peer1}
-
-	raft1, _, tr1, err := makeTestingRaft(peer1, peers1, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft1.Shutdown()
+	peer1, peer2, pids := makeTwoPeers(t)
+	defer peer1.Close()
+	defer peer2.Close()
+	raft1, _, tr1 := makeTestingRaft(t, peer1, pids, nil)
+	defer shutdown(t, raft1)
 	defer tr1.Close()
-	raft2, _, tr2, err := makeTestingRaft(peer2, peers2, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft2.Shutdown()
+	raft2, _, tr2 := makeTestingRaft(t, peer2, pids, nil)
+	defer shutdown(t, raft2)
 	defer tr2.Close()
 	defer os.RemoveAll(raftTmpFolder)
 
 	actor1 := NewActor(raft1)
 	actor2 := NewActor(raft2)
 
-	time.Sleep(3 * time.Second)
-
-	if !actor1.IsLeader() && !actor2.IsLeader() {
-		t.Fatal("raft failed to declare a leader")
-	}
-
+	waitForLeader(t, raft1)
 	t.Log(actor1.Leader())
 	t.Log(actor2.Leader())
 
@@ -84,38 +70,22 @@ func TestSetState(t *testing.T) {
 }
 
 func TestActorLeader(t *testing.T) {
-	peer1, _ := NewRandomPeer(9997)
-	peer2, _ := NewRandomPeer(9998)
-	peers1 := []*Peer{peer2}
-	peers2 := []*Peer{peer1}
-
-	raft1, _, tr1, err := makeTestingRaft(peer1, peers1, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft1.Shutdown()
+	peer1, peer2, pids := makeTwoPeers(t)
+	defer peer1.Close()
+	defer peer2.Close()
+	raft1, _, tr1 := makeTestingRaft(t, peer1, pids, nil)
+	defer shutdown(t, raft1)
 	defer tr1.Close()
-	raft2, _, tr2, err := makeTestingRaft(peer2, peers2, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer raft2.Shutdown()
+	raft2, _, tr2 := makeTestingRaft(t, peer2, pids, nil)
+	defer shutdown(t, raft2)
 	defer tr2.Close()
 	defer os.RemoveAll(raftTmpFolder)
 
 	actor1 := NewActor(raft1)
-	i := 0
-	for i = 0; i < 20; i++ {
-		l, err := actor1.Leader()
-		if err != nil {
-			t.Log("No leader yet")
-			time.Sleep(250 * time.Millisecond)
-			continue
-		}
-		t.Log("Leader is", l)
-		break
+	waitForLeader(t, raft1)
+	l, err := actor1.Leader()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if i == 20 {
-		t.Error("Failed to declare a leader")
-	}
+	t.Log("Leader is", l)
 }
