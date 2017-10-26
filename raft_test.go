@@ -161,7 +161,7 @@ func Example_consensus() {
 	// end of the execution we verify that all members have agreed on the
 	// same state.
 	//
-	// Some some error handling has been excluded for simplicity
+	// Some error handling has been excluded for simplicity
 
 	// Declare an object which represents the State.
 	// Note that State objects should have public/exported fields,

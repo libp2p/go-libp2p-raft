@@ -100,7 +100,7 @@ func (ap *addrProvider) ServerAddr(id raft.ServerID) (raft.ServerAddress, error)
 		return "", fmt.Errorf("bad peer ID: %s", id)
 	}
 	addrs := ap.h.Peerstore().Addrs(pid)
-	if len(addrs) > 0 {
+	if len(addrs) == 0 {
 		return "", fmt.Errorf("libp2p host does not know peer %s", id)
 	}
 	return raft.ServerAddress(id), nil
