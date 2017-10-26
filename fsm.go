@@ -38,19 +38,19 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 
 	// What this does:
 	// - Check that we can deserialize an operation
+	//   - If no -> check if we can deserialize a stateOp (rollbacks)
+	//     - If it fails -> return nil and mark the state inconsistent
+	//     - If it works -> replace the state and mark it as consistent
 	//   - If yes -> ApplyTo() the state if it is consistent so far
 	//     - If ApplyTo() fails, return nil and mark state as inconsistent
 	//     - If ApplyTo() works, replace the state
-	//   - If no -> check if we can deserialize a consensusOp (rollbacks)
-	//     - If it fails -> return nil and mark the state inconsistent
-	//     - If it works -> replace the state and mark it as consistent
 	// - Notify subscribers of the new state and return it
 
 	var newState consensus.State
 
 	if err := decodeOp(rlog.Data, &fsm.op); err != nil {
 		// maybe it is a standard rollback
-		rollbackOp := consensus.Op(consensusOp{fsm.state})
+		rollbackOp := consensus.Op(stateOp{fsm.state})
 		err := decodeOp(rlog.Data, &rollbackOp)
 		if err != nil {
 			logger.Error("error decoding op: ", err)
@@ -58,7 +58,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 			return nil
 		}
 		//fmt.Printf("%+v\n", rollbackOp)
-		castedRollback := rollbackOp.(consensusOp)
+		castedRollback := rollbackOp.(stateOp)
 		newState = castedRollback.State
 		fsm.inconsistent = false
 	} else {

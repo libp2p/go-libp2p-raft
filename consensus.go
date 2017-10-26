@@ -16,27 +16,27 @@ type Consensus struct {
 	actor consensus.Actor
 }
 
-// consensusOp: A Consensus is a particular case of OpLogConsensus where the Operation
-// is itself the state and every new operation just replaces the previous
-// state. For this case, we use this operation. It tracks the state itself.
-// It is also used for performing rollbacks to a given state.
-type consensusOp struct {
+// consensusOp: A Consensus is a particular case of OpLogConsensus where the
+// Operation is itself the state and every new operation just replaces the
+// previous state. For this case, we use this operation. It tracks the state
+// itself. It is also used for performing rollbacks to a given state.
+type stateOp struct {
 	State consensus.State
 }
 
 // ApplyTo just returns the state in the operation and discards the
 // "old" one.
-func (cop consensusOp) ApplyTo(st consensus.State) (consensus.State, error) {
-	return cop.State, nil
+func (sop stateOp) ApplyTo(st consensus.State) (consensus.State, error) {
+	return sop.State, nil
 }
 
 // NewConsensus returns a new consensus. Because the State
 // is generic, and we know nothing about it, it needs to be initialized first.
-// Note that this state initual state is not agreed upon in the cluster and that
+// Note that this initial state is not agreed upon in the cluster and that
 // GetCurrentState() will return an error until a state is agreed upon. Only
 // states submitted via CommitState() are agreed upon.
 func NewConsensus(state consensus.State) *Consensus {
-	return NewOpLog(state, consensusOp{State: state})
+	return NewOpLog(state, stateOp{State: state})
 }
 
 // NewOpLog returns a new OpLog. Because the State and the Ops
@@ -118,7 +118,7 @@ func (opLog *Consensus) GetLogHead() (consensus.State, error) {
 //
 // Note that only the Raft leader can commit a state.
 func (c *Consensus) CommitState(state consensus.State) (consensus.State, error) {
-	return c.CommitOp(consensusOp{state})
+	return c.CommitOp(stateOp{state})
 }
 
 // Rollback hammers the provided state into the system. It does not un-do any
