@@ -8,7 +8,7 @@ import (
 )
 
 // encodeState serializes a state
-func encodeState(state consensus.State) ([]byte, error) {
+func EncodeState(state consensus.State) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Encoder(buf)
 	if err := enc.Encode(state); err != nil {
@@ -18,7 +18,7 @@ func encodeState(state consensus.State) ([]byte, error) {
 }
 
 // decodeState deserializes a state
-func decodeState(bs []byte, state *consensus.State) error {
+func DecodeState(bs []byte, state *consensus.State) error {
 	buf := bytes.NewBuffer(bs)
 	dec := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Decoder(buf)
 	if err := dec.Decode(state); err != nil {
