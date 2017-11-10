@@ -7,8 +7,8 @@ import (
 	msgpack "github.com/multiformats/go-multicodec/msgpack"
 )
 
-// encodeState serializes a state
-func encodeState(state consensus.State) ([]byte, error) {
+// EncodeState serializes a state
+func EncodeState(state consensus.State) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Encoder(buf)
 	if err := enc.Encode(state); err != nil {
@@ -17,8 +17,8 @@ func encodeState(state consensus.State) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// decodeState deserializes a state
-func decodeState(bs []byte, state *consensus.State) error {
+// DecodeState deserializes a state
+func DecodeState(bs []byte, state *consensus.State) error {
 	buf := bytes.NewBuffer(bs)
 	dec := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Decoder(buf)
 	if err := dec.Decode(state); err != nil {
