@@ -16,6 +16,20 @@ type Consensus struct {
 	actor consensus.Actor
 }
 
+// MarshableState is an interface to be implemented by those States that
+// wish to choose their serialization format for Raft snapshots.
+// libp2praft will check if the consensus.State it is working with
+// implements the MarshableState interface and, if so, will call Marshal()
+// and Unmarshal() when doing snapshots and restoring them. Otherwise,
+// a default serialization strategy will be used.
+//
+// MarshableState is useful to allow the user-provided consensus.State to
+// decide which format Raft snapshots use.
+type MarshableState interface {
+	Marshal() ([]byte, error)
+	Unmarshal([]byte) error
+}
+
 // consensusOp: A Consensus is a particular case of OpLogConsensus where the
 // Operation is itself the state and every new operation just replaces the
 // previous state. For this case, we use this operation. It tracks the state
@@ -53,8 +67,8 @@ func NewConsensus(state consensus.State) *Consensus {
 func NewOpLog(state consensus.State, op consensus.Op) *Consensus {
 	return &Consensus{
 		fsm: &FSM{
-			state:        state,
-			op:           op,
+			stateWrap:    stateWrapper{state},
+			opWrap:       opWrapper{op},
 			initialized:  false,
 			inconsistent: false,
 			subscriberCh: nil,

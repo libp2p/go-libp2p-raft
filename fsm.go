@@ -13,6 +13,16 @@ import (
 
 var MaxSubscriberCh = 128
 
+// a concrete type to facilitate serialization etc as doing it
+// direclty on interfaces makes trouble
+type stateWrapper struct {
+	State consensus.State
+}
+
+type opWrapper struct {
+	Op consensus.Op
+}
+
 // FSM implements a minimal raft.FSM that holds a generic consensus.State
 // and applies generic Ops to it. The state can be serialized/deserialized,
 // snappshotted and restored.
@@ -20,8 +30,8 @@ var MaxSubscriberCh = 128
 // Please use the value returned by Consensus.FSM() to initialize Raft.
 // Do not use this object directly.
 type FSM struct {
-	state        consensus.State
-	op           consensus.Op
+	stateWrap    stateWrapper
+	opWrap       opWrapper
 	initialized  bool
 	inconsistent bool
 
@@ -48,9 +58,9 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 
 	var newState consensus.State
 
-	if err := decodeOp(rlog.Data, &fsm.op); err != nil {
+	if err := decodeOp(rlog.Data, &fsm.opWrap); err != nil {
 		// maybe it is a standard rollback
-		rollbackOp := consensus.Op(stateOp{fsm.state})
+		rollbackOp := opWrapper{consensus.Op(&stateOp{fsm.stateWrap.State})}
 		err := decodeOp(rlog.Data, &rollbackOp)
 		if err != nil {
 			logger.Error("error decoding op: ", err)
@@ -58,23 +68,23 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 			return nil
 		}
 		//fmt.Printf("%+v\n", rollbackOp)
-		castedRollback := rollbackOp.(stateOp)
+		castedRollback := rollbackOp.Op.(*stateOp)
 		newState = castedRollback.State
 		fsm.inconsistent = false
 	} else {
-		//fmt.Printf("%+v\n", fsm.op)
-		newState, err = fsm.op.ApplyTo(fsm.state)
+		//fmt.Printf("%+v\n", fsm.opWrapper)
+		newState, err = fsm.opWrap.Op.ApplyTo(fsm.stateWrap.State)
 		if err != nil {
 			logger.Error("error applying Op to State")
 			fsm.inconsistent = true
 			return nil
 		}
 	}
-	fsm.state = newState
+	fsm.stateWrap.State = newState
 	fsm.initialized = true
 
-	fsm.updateSubscribers(fsm.state)
-	return fsm.state
+	fsm.updateSubscribers(fsm.stateWrap.State)
+	return fsm.stateWrap.State
 }
 
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
@@ -90,7 +100,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	}
 
 	// Encode the state
-	bytes, err := EncodeSnapshot(fsm.state)
+	bytes, err := EncodeSnapshot(fsm.stateWrap)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +118,7 @@ func (fsm *FSM) Restore(reader io.ReadCloser) error {
 
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if err := DecodeSnapshot(snapBytes, &fsm.state); err != nil {
+	if err := DecodeSnapshot(snapBytes, &fsm.stateWrap); err != nil {
 		logger.Errorf("error decoding snapshot: %s", err)
 		return err
 	}
@@ -147,7 +157,7 @@ func (fsm *FSM) getState() (consensus.State, error) {
 	if fsm.inconsistent {
 		return nil, errors.New("the state on this node is not consistent")
 	}
-	return fsm.state, nil
+	return fsm.stateWrap.State, nil
 }
 
 func (fsm *FSM) updateSubscribers(st consensus.State) {
@@ -172,10 +182,7 @@ func (fsms fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 	if err != nil {
 		return err
 	}
-	if err := sink.Close(); err != nil {
-		return err
-	}
-	return nil
+	return sink.Close()
 }
 
 func (fsms fsmSnapshot) Release() {

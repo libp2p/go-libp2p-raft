@@ -59,7 +59,7 @@ func (actor *Actor) commitOp(op consensus.Op) (consensus.State, error) {
 		return nil, errors.New("this actor is not the leader")
 	}
 
-	bs, err := encodeOp(op)
+	bs, err := encodeOp(opWrapper{Op: op})
 	if err != nil {
 		return nil, err
 	}
