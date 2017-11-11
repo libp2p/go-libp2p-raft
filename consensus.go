@@ -30,7 +30,7 @@ type MarshableState interface {
 	Unmarshal([]byte) error
 }
 
-// consensusOp: A Consensus is a particular case of OpLogConsensus where the
+// stateOp: A Consensus is a particular case of OpLogConsensus where the
 // Operation is itself the state and every new operation just replaces the
 // previous state. For this case, we use this operation. It tracks the state
 // itself. It is also used for performing rollbacks to a given state.
@@ -44,8 +44,10 @@ func (sop stateOp) ApplyTo(st consensus.State) (consensus.State, error) {
 	return sop.State, nil
 }
 
-// NewConsensus returns a new consensus. Because the State
-// is generic, and we know nothing about it, it needs to be initialized first.
+// NewConsensus returns a new consensus. The state is provided so that
+// the appropiate internal structures can be initialized. The underlying
+// State type should be a pointer, otherwise some operations will not work.
+//
 // Note that this initial state is not agreed upon in the cluster and that
 // GetCurrentState() will return an error until a state is agreed upon. Only
 // states submitted via CommitState() are agreed upon.
@@ -57,7 +59,8 @@ func NewConsensus(state consensus.State) *Consensus {
 // are generic, and we know nothing about them, they need to
 // be provided in order to initialize internal structures with the
 // right types. Both the state and the op parameters are not used nor
-// agreed upon just yet.
+// agreed upon just yet. Both the state and the op underlying types should
+// be pointers to something, otherwise expect some misbehaviours.
 //
 // It is important to note that the system agrees on an operation log,
 // but the resulting state can only be considered agreed-upon if all
@@ -91,7 +94,8 @@ func (c *Consensus) SetActor(actor consensus.Actor) {
 // GetCurrentState returns the upon-agreed state of the system. It will
 // return an error when no state has been agreed upon or when the state
 // cannot be ensured to be that on which the rest of the system has
-// agreed-upon.
+// agreed-upon. The underlying state will be the same as provided
+// initialization.
 func (c *Consensus) GetCurrentState() (consensus.State, error) {
 	return c.GetLogHead()
 }
@@ -106,7 +110,9 @@ func (c *Consensus) GetCurrentState() (consensus.State, error) {
 // and calls to GetLogHead() will fail for this node, even though updates
 // will be processed as usual.
 //
-// Inconsistent states can be rescued using Rollback()
+// Inconsistent states can be rescued using Rollback().
+// The underlying object to the returned State will be the one provided
+// during initialization.
 func (opLog *Consensus) CommitOp(op consensus.Op) (consensus.State, error) {
 	if opLog.actor == nil {
 		return nil, errors.New("no actor set to commit the new state")
