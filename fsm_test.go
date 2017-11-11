@@ -26,14 +26,14 @@ func TestCodecs(t *testing.T) {
 		},
 	}
 
-	bytes, err := EncodeState(st)
+	bytes, err := encodeState(st)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	stmp := consensus.State(testState{})
 
-	err = DecodeState(bytes, &stmp)
+	err = decodeState(bytes, &stmp)
 	if err != nil {
 		t.Fatal(err)
 	}

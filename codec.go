@@ -7,8 +7,8 @@ import (
 	msgpack "github.com/multiformats/go-multicodec/msgpack"
 )
 
-// EncodeState serializes a state
-func EncodeState(state consensus.State) ([]byte, error) {
+// encodeState serializes a state
+func encodeState(state consensus.State) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Encoder(buf)
 	if err := enc.Encode(state); err != nil {
@@ -17,14 +17,28 @@ func EncodeState(state consensus.State) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// DecodeState deserializes a state
-func DecodeState(bs []byte, state *consensus.State) error {
+// decodeState deserializes a state
+func decodeState(bs []byte, state *consensus.State) error {
 	buf := bytes.NewBuffer(bs)
 	dec := msgpack.Multicodec(msgpack.DefaultMsgpackHandle()).Decoder(buf)
 	if err := dec.Decode(state); err != nil {
 		return err
 	}
 	return nil
+}
+
+// EncodeSnapshot serializes a state and is used by our raft's FSM
+// implementation to describe the format raft stores snapshots on
+// disk.
+func EncodeSnapshot(state consensus.State) ([]byte, error) {
+	return encodeState(state)
+}
+
+// DecodeSnapshot de-serializes a state encoded with EncodeSnapshot
+// onto the given state. It is used by our raft's FSM implementation
+// which allows raft to read snapshots.
+func DecodeSnapshot(snap []byte, state *consensus.State) error {
+	return decodeState(snap, state)
 }
 
 // encodeOp serializes an op
