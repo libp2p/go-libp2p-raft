@@ -30,12 +30,12 @@ func TestTransportSnapshots(t *testing.T) {
 
 	for i := 0; i < 5000; i++ {
 		if actor1.IsLeader() {
-			_, err := c1.CommitState(raftState{fmt.Sprintf("count: %d", i)})
+			_, err := c1.CommitState(&raftState{fmt.Sprintf("count: %d", i)})
 			if err != nil {
 				t.Fatal(err)
 			}
 		} else if actor2.IsLeader() {
-			_, err := c2.CommitState(raftState{fmt.Sprintf("count: %d", i)})
+			_, err := c2.CommitState(&raftState{fmt.Sprintf("count: %d", i)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -78,6 +78,7 @@ func TestTransportSnapshots(t *testing.T) {
 	st := newst.(raftState)
 	if st.Msg != "count: 4999" {
 		t.Error("state not restored correctly")
+		t.Error(st.Msg)
 	}
 	raftTmpFolder = raftTmpFolderOrig
 }
