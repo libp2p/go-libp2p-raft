@@ -100,7 +100,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	}
 
 	// Encode the state
-	bytes, err := EncodeSnapshot(fsm.stateWrap)
+	bytes, err := EncodeSnapshot(fsm.stateWrap.State)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (fsm *FSM) Restore(reader io.ReadCloser) error {
 
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if err := DecodeSnapshot(snapBytes, &fsm.stateWrap); err != nil {
+	if err := DecodeSnapshot(snapBytes, fsm.stateWrap.State); err != nil {
 		logger.Errorf("error decoding snapshot: %s", err)
 		return err
 	}
