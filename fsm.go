@@ -37,7 +37,7 @@ type FSM struct {
 
 	mux sync.Mutex
 
-	subscriberCh chan consensus.State
+	subscriberCh chan struct{}
 	chMux        sync.Mutex
 }
 
@@ -83,7 +83,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 	fsm.stateWrap.State = newState
 	fsm.initialized = true
 
-	fsm.updateSubscribers(fsm.stateWrap.State)
+	fsm.updateSubscribers()
 	return fsm.stateWrap.State
 }
 
@@ -128,11 +128,11 @@ func (fsm *FSM) Restore(reader io.ReadCloser) error {
 }
 
 // subscribe returns a channel on which every new state is sent.
-func (fsm *FSM) subscribe() <-chan consensus.State {
+func (fsm *FSM) subscribe() <-chan struct{} {
 	fsm.chMux.Lock()
 	defer fsm.chMux.Unlock()
 	if fsm.subscriberCh == nil {
-		fsm.subscriberCh = make(chan consensus.State, MaxSubscriberCh)
+		fsm.subscriberCh = make(chan struct{}, MaxSubscriberCh)
 	}
 	return fsm.subscriberCh
 }
@@ -160,14 +160,14 @@ func (fsm *FSM) getState() (consensus.State, error) {
 	return fsm.stateWrap.State, nil
 }
 
-func (fsm *FSM) updateSubscribers(st consensus.State) {
+func (fsm *FSM) updateSubscribers() {
 	fsm.chMux.Lock()
 	defer fsm.chMux.Unlock()
 	if fsm.subscriberCh != nil {
 		select {
-		case fsm.subscriberCh <- st:
+		case fsm.subscriberCh <- struct{}{}:
 		default:
-			logger.Error("subscriber channel is full. Discarding state!")
+			logger.Error("subscriber channel is full. Discarding update!")
 		}
 	}
 }
