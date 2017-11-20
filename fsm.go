@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/raft"
 )
 
+// MaxSubscriberCh indicates how much buffering the subscriber channel
+// has.
 var MaxSubscriberCh = 128
 
 // a concrete type to facilitate serialization etc as doing it
@@ -87,6 +89,7 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 	return fsm.stateWrap.State
 }
 
+// Snapshot encodes the current state so that we can save a snapshot.
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
@@ -109,6 +112,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	return snap, nil
 }
 
+// Restore takes a snapshot and sets the current state from it.
 func (fsm *FSM) Restore(reader io.ReadCloser) error {
 	snapBytes, err := ioutil.ReadAll(reader)
 	if err != nil {
