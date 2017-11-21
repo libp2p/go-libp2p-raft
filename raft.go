@@ -36,12 +36,9 @@
 // as dirty but does not removes the operation itself.
 // See CommitOp() for more details.
 //
-// Using pointer types for consensus.Op and consensus.State implies
-// that consensus operations will return pointers. Modifying
-// a consensus.State defined as pointer, may affect the internal
-// state of the Raft FSM. Therefore, it is recommended to not use
-// Ops and States as pointers, and let Go perform and return
-// independent copies.
+// The underlying state for consensus.State should be a pointer,
+// otherwise some operations won't work. Once provided, the state
+// should only be modifed by this library.
 package libp2praft
 
 import (

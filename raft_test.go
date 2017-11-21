@@ -33,8 +33,8 @@ type testOperation struct {
 }
 
 func (o testOperation) ApplyTo(s consensus.State) (consensus.State, error) {
-	raftSt := s.(raftState)
-	return raftState{Msg: raftSt.Msg + o.Append}, nil
+	raftSt := s.(*raftState)
+	return &raftState{Msg: raftSt.Msg + o.Append}, nil
 }
 
 // wait 10 seconds for a leader.
@@ -84,9 +84,9 @@ func makeTestingRaft(t *testing.T, h host.Host, pids []peer.ID, op consensus.Op)
 	// -- Create the consensus with no actor attached
 	var consensus *Consensus
 	if op != nil {
-		consensus = NewOpLog(raftState{}, op)
+		consensus = NewOpLog(&raftState{}, op)
 	} else {
-		consensus = NewConsensus(raftState{"i am not consensuated"})
+		consensus = NewConsensus(&raftState{"i am not consensuated"})
 	}
 	// --
 
@@ -207,9 +207,9 @@ func Example_consensus() {
 	// Note that state is just used for local initialization, and that,
 	// only states submitted via CommitState() alters the state of the
 	// cluster.
-	consensus1 := NewConsensus(raftState{3})
-	consensus2 := NewConsensus(raftState{3})
-	consensus3 := NewConsensus(raftState{3})
+	consensus1 := NewConsensus(&raftState{3})
+	consensus2 := NewConsensus(&raftState{3})
+	consensus3 := NewConsensus(&raftState{3})
 
 	// Create LibP2P transports Raft
 	transport1, err := NewLibp2pTransport(peer1, time.Minute)
@@ -319,7 +319,7 @@ func Example_consensus() {
 				break
 			}
 
-			newState := raftState{nUpdates * 2}
+			newState := &raftState{nUpdates * 2}
 
 			// CommitState() blocks until the state has been
 			// agreed upon by everyone
@@ -332,7 +332,7 @@ func Example_consensus() {
 				fmt.Println("agreedState is nil: commited on a non-leader?")
 				continue
 			}
-			agreedRaftState := agreedState.(raftState)
+			agreedRaftState := agreedState.(*raftState)
 			nUpdates++
 
 			if nUpdates%200 == 0 {
@@ -380,9 +380,9 @@ func Example_consensus() {
 		fmt.Println(err)
 		return
 	}
-	finalRaftState1 := finalState1.(raftState)
-	finalRaftState2 := finalState2.(raftState)
-	finalRaftState3 := finalState3.(raftState)
+	finalRaftState1 := finalState1.(*raftState)
+	finalRaftState2 := finalState2.(*raftState)
+	finalRaftState3 := finalState3.(*raftState)
 
 	fmt.Printf("Raft1 final state: %d\n", finalRaftState1.Value)
 	fmt.Printf("Raft2 final state: %d\n", finalRaftState2.Value)

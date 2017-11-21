@@ -75,7 +75,7 @@ func TestTransportSnapshots(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	newst, err := c1.GetCurrentState()
-	st := newst.(raftState)
+	st := newst.(*raftState)
 	if st.Msg != "count: 4999" {
 		t.Error("state not restored correctly")
 		t.Error(st.Msg)

@@ -7,7 +7,7 @@ import (
 
 func TestNewActor(t *testing.T) {
 	actor := NewActor(nil)
-	st, err := actor.SetState(raftState{"testing"})
+	st, err := actor.SetState(&raftState{"testing"})
 	if st != nil || err == nil {
 		t.Error("should fail when setting an state and raft is nil")
 	}
@@ -38,19 +38,19 @@ func TestSetState(t *testing.T) {
 	t.Log(actor2.Leader())
 
 	testLeader := func(actor *Actor) {
-		st, err := actor.SetState(raftState{"testingLeader"})
+		st, err := actor.SetState(&raftState{"testingLeader"})
 		if err != nil {
 			t.Fatal("the leader should be able to set the state")
 		}
 
-		rSt := st.(raftState)
+		rSt := st.(*raftState)
 		if rSt.Msg != "testingLeader" {
 			t.Error("the returned state is not correct")
 		}
 	}
 
 	testFollower := func(actor *Actor) {
-		st, err := actor.SetState(raftState{"testingFollower"})
+		st, err := actor.SetState(&raftState{"testingFollower"})
 		if st != nil || err == nil {
 			t.Error("the follower should not be able to set the state")
 		}

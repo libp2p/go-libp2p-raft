@@ -117,7 +117,7 @@ func TestSubscribe(t *testing.T) {
 
 	updateState := func(c *Consensus) {
 		for i := 0; i < 5; i++ {
-			c.CommitState(raftState{fmt.Sprintf("%d", i)})
+			c.CommitState(&raftState{fmt.Sprintf("%d", i)})
 		}
 	}
 
@@ -128,14 +128,9 @@ func TestSubscribe(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Check subscriber 1 got all the updates and not more
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		select {
-		case st := <-subscriber1:
-			newSt := st.(raftState)
-			t.Log("received state:", newSt.Msg)
-			if newSt.Msg != fmt.Sprintf("%d", i) {
-				t.Fatal("expected a different state")
-			}
+		case <-subscriber1:
 		default:
 			if i < 5 {
 				t.Fatal("expected to read something")
@@ -146,14 +141,9 @@ func TestSubscribe(t *testing.T) {
 	}
 
 	// Check subscriber 2 got all the updates and not more
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		select {
-		case st := <-subscriber2:
-			newSt := st.(raftState)
-			t.Log("received state:", newSt.Msg)
-			if newSt.Msg != fmt.Sprintf("%d", i) {
-				t.Fatal("expected a different state")
-			}
+		case <-subscriber2:
 		default:
 			if i < 5 {
 				t.Fatal("expected to read something")
@@ -217,13 +207,13 @@ func TestOpLog(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newSt1 := logHead1.(raftState)
+	newSt1 := logHead1.(*raftState)
 	t.Log(newSt1.Msg)
 	if newSt1.Msg != "I have appended this sentence to the state Msg." {
 		t.Error("Log head is not the result of applying the operations")
 	}
 
-	newSt2 := logHead2.(raftState)
+	newSt2 := logHead2.(*raftState)
 	t.Log(newSt2.Msg)
 	if newSt2.Msg != "I have appended this sentence to the state Msg." {
 		t.Error("Log head is not the result of applying the operations")
@@ -232,8 +222,8 @@ func TestOpLog(t *testing.T) {
 	// Test a ROLLBACK now
 	// Only the leader will succeed
 	t.Log("testing Rollback")
-	opLog1.Rollback(raftState{"Good as new"})
-	opLog2.Rollback(raftState{"Good as new"})
+	opLog1.Rollback(&raftState{"Good as new"})
+	opLog2.Rollback(&raftState{"Good as new"})
 
 	time.Sleep(1 * time.Second)
 
@@ -247,13 +237,13 @@ func TestOpLog(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newSt1 = logHead1.(raftState)
+	newSt1 = logHead1.(*raftState)
 	t.Log(newSt1.Msg)
 	if newSt1.Msg != "Good as new" {
 		t.Error("log head is not the result of a rollback")
 	}
 
-	newSt2 = logHead2.(raftState)
+	newSt2 = logHead2.(*raftState)
 	t.Log(newSt2.Msg)
 	if newSt2.Msg != "Good as new" {
 		t.Error("log head is not the result of a rollback")
@@ -307,8 +297,8 @@ func TestBadApplyAt(t *testing.T) {
 	// Test a ROLLBACK now
 	// Only the leader will succeed
 	t.Log("testing Rollback")
-	opLog1.Rollback(raftState{"Good as new"})
-	opLog2.Rollback(raftState{"Good as new"})
+	opLog1.Rollback(&raftState{"Good as new"})
+	opLog2.Rollback(&raftState{"Good as new"})
 
 	time.Sleep(1 * time.Second)
 
@@ -322,13 +312,13 @@ func TestBadApplyAt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newSt1 := logHead1.(raftState)
+	newSt1 := logHead1.(*raftState)
 	t.Log(newSt1.Msg)
 	if newSt1.Msg != "Good as new" {
 		t.Error("log head is not the result of a rollback")
 	}
 
-	newSt2 := logHead2.(raftState)
+	newSt2 := logHead2.(*raftState)
 	t.Log(newSt2.Msg)
 	if newSt2.Msg != "Good as new" {
 		t.Error("log head is not the result of a rollback")

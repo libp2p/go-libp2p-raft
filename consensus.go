@@ -150,12 +150,12 @@ func (opLog *Consensus) Rollback(state consensus.State) error {
 	return err
 }
 
-// subscribe returns a channel on which every new state is sent.
-func (c *Consensus) Subscribe() <-chan consensus.State {
+// Subscribe returns a channel which is notified on every state update.
+func (c *Consensus) Subscribe() <-chan struct{} {
 	return c.fsm.subscribe()
 }
 
-// unsubscribe closes the channel returned upon Subscribe() (if any).
+// Unsubscribe closes the channel returned upon Subscribe() (if any).
 func (c *Consensus) Unsubscribe() {
 	c.fsm.unsubscribe()
 }

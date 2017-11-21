@@ -34,9 +34,8 @@ func EncodeSnapshot(state consensus.State) ([]byte, error) {
 	marshable, ok := state.(MarshableState)
 	if ok {
 		return marshable.Marshal()
-	} else {
-		return encodeState(stateWrapper{state})
 	}
+	return encodeState(stateWrapper{state})
 }
 
 // DecodeSnapshot de-serializes a state encoded with EncodeSnapshot
@@ -46,9 +45,8 @@ func DecodeSnapshot(snap []byte, state consensus.State) error {
 	marshable, ok := state.(MarshableState)
 	if ok {
 		return marshable.Unmarshal(snap)
-	} else {
-		return decodeState(snap, &stateWrapper{state})
 	}
+	return decodeState(snap, &stateWrapper{state})
 }
 
 // encodeOp serializes an op

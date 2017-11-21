@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/raft"
 )
 
+// MaxSubscriberCh indicates how much buffering the subscriber channel
+// has.
 var MaxSubscriberCh = 128
 
 // a concrete type to facilitate serialization etc as doing it
@@ -37,7 +39,7 @@ type FSM struct {
 
 	mux sync.Mutex
 
-	subscriberCh chan consensus.State
+	subscriberCh chan struct{}
 	chMux        sync.Mutex
 }
 
@@ -83,10 +85,11 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 	fsm.stateWrap.State = newState
 	fsm.initialized = true
 
-	fsm.updateSubscribers(fsm.stateWrap.State)
+	fsm.updateSubscribers()
 	return fsm.stateWrap.State
 }
 
+// Snapshot encodes the current state so that we can save a snapshot.
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
@@ -100,7 +103,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	}
 
 	// Encode the state
-	bytes, err := EncodeSnapshot(fsm.stateWrap)
+	bytes, err := EncodeSnapshot(fsm.stateWrap.State)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +112,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	return snap, nil
 }
 
+// Restore takes a snapshot and sets the current state from it.
 func (fsm *FSM) Restore(reader io.ReadCloser) error {
 	snapBytes, err := ioutil.ReadAll(reader)
 	if err != nil {
@@ -118,7 +122,7 @@ func (fsm *FSM) Restore(reader io.ReadCloser) error {
 
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if err := DecodeSnapshot(snapBytes, &fsm.stateWrap); err != nil {
+	if err := DecodeSnapshot(snapBytes, fsm.stateWrap.State); err != nil {
 		logger.Errorf("error decoding snapshot: %s", err)
 		return err
 	}
@@ -128,11 +132,11 @@ func (fsm *FSM) Restore(reader io.ReadCloser) error {
 }
 
 // subscribe returns a channel on which every new state is sent.
-func (fsm *FSM) subscribe() <-chan consensus.State {
+func (fsm *FSM) subscribe() <-chan struct{} {
 	fsm.chMux.Lock()
 	defer fsm.chMux.Unlock()
 	if fsm.subscriberCh == nil {
-		fsm.subscriberCh = make(chan consensus.State, MaxSubscriberCh)
+		fsm.subscriberCh = make(chan struct{}, MaxSubscriberCh)
 	}
 	return fsm.subscriberCh
 }
@@ -160,14 +164,14 @@ func (fsm *FSM) getState() (consensus.State, error) {
 	return fsm.stateWrap.State, nil
 }
 
-func (fsm *FSM) updateSubscribers(st consensus.State) {
+func (fsm *FSM) updateSubscribers() {
 	fsm.chMux.Lock()
 	defer fsm.chMux.Unlock()
 	if fsm.subscriberCh != nil {
 		select {
-		case fsm.subscriberCh <- st:
+		case fsm.subscriberCh <- struct{}{}:
 		default:
-			logger.Error("subscriber channel is full. Discarding state!")
+			logger.Error("subscriber channel is full. Discarding update!")
 		}
 	}
 }
