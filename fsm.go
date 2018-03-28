@@ -15,6 +15,10 @@ import (
 // has.
 var MaxSubscriberCh = 128
 
+// ErrNoState is returned when no state has been agreed upon by the consensus
+// protocol
+var ErrNoState = errors.New("no state has been agreed upon yet")
+
 // a concrete type to facilitate serialization etc as doing it
 // direclty on interfaces makes trouble
 type stateWrapper struct {
@@ -156,7 +160,7 @@ func (fsm *FSM) getState() (consensus.State, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
 	if !fsm.initialized {
-		return nil, errors.New("no state has been agreed upon yet")
+		return nil, ErrNoState
 	}
 	if fsm.inconsistent {
 		return nil, errors.New("the state on this node is not consistent")
