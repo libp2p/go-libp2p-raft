@@ -9,14 +9,11 @@ import (
 	"testing"
 	"time"
 
+	libp2p "github.com/libp2p/go-libp2p"
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	swarm "github.com/libp2p/go-libp2p-swarm"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	multiaddr "github.com/multiformats/go-multiaddr"
 
 	"github.com/hashicorp/raft"
 )
@@ -172,21 +169,11 @@ func Example_consensus() {
 
 	// error handling ommitted
 	newPeer := func(listenPort int) host.Host {
-		priv, pub, _ := crypto.GenerateKeyPair(crypto.RSA, 2048)
-		pid, _ := peer.IDFromPublicKey(pub)
-		maddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))
-		ctx := context.Background()
-		ps := peerstore.NewPeerstore()
-		ps.AddPubKey(pid, pub)
-		ps.AddPrivKey(pid, priv)
-		network, _ := swarm.NewNetwork(
-			ctx,
-			[]multiaddr.Multiaddr{maddr},
-			pid,
-			ps,
-			nil)
-
-		return basichost.New(network)
+		h, _ := libp2p.New(
+			context.Background(),
+			libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort)),
+		)
+		return h
 	}
 
 	// Create peers and make sure they know about each others.
