@@ -4,58 +4,29 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"os"
 	"testing"
 	"time"
 
+	libp2p "github.com/libp2p/go-libp2p"
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	crypto "github.com/libp2p/go-libp2p-crypto"
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
-	swarm "github.com/libp2p/go-libp2p-swarm"
-	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
-	multiaddr "github.com/multiformats/go-multiaddr"
 )
 
 // newRandomHost returns a peer which listens on the given tcp port
 // on localhost.
 func newRandomHost(listenPort int, t *testing.T) host.Host {
-	priv, pub, err := crypto.GenerateKeyPair(crypto.RSA, 2048)
+	h, err := libp2p.New(
+		context.Background(),
+		libp2p.ListenAddrStrings(fmt.Sprintf(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pid, err := peer.IDFromPublicKey(pub)
-	if err != nil {
-		t.Fatal(err)
-	}
-	maddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx := context.Background()
-	ps := peerstore.NewPeerstore()
-	err = ps.AddPubKey(pid, pub)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ps.AddPrivKey(pid, priv)
-	if err != nil {
-		t.Fatal(err)
-	}
-	network, err := swarm.NewNetwork(
-		ctx,
-		[]multiaddr.Multiaddr{maddr},
-		pid,
-		ps,
-		nil)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return bhost.New(network)
+	return h
 }
 
 func makeTwoPeers(t *testing.T) (h1 host.Host, h2 host.Host, pids []peer.ID) {
