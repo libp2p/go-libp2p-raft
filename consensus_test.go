@@ -21,7 +21,7 @@ import (
 func newRandomHost(listenPort int, t *testing.T) host.Host {
 	h, err := libp2p.New(
 		context.Background(),
-		libp2p.ListenAddrStrings(fmt.Sprintf(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))),
+		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort)),
 	)
 	if err != nil {
 		t.Fatal(err)
