@@ -33,9 +33,9 @@
     },
     {
       "author": "hsanjuan",
-      "hash": "QmS7Bn4t9wmD9iyMQzT1TEuFoRZLJqmTyjuDsLMLZDt8tn",
+      "hash": "QmPurFtJHejs1FoHVz4kn54be5XEg4Mb19MCzrpfCpRvwJ",
       "name": "go-libp2p-gostream",
-      "version": "0.0.10"
+      "version": "0.0.11"
     }
   ],
   "gxVersion": "0.10.0",
@@ -43,6 +43,6 @@
   "license": "MIT",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.2.9"
+  "version": "1.2.10"
 }
 
