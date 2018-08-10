@@ -9,9 +9,9 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "QmZ86eLPtXkQ1Dfa992Q8NpXArUoWWh3y728JDcWvzRrvC",
+      "hash": "QmUDzeFgYrRmHL2hUB6NZmqcBVQtUzETwmFRUc9onfSSHr",
       "name": "go-libp2p",
-      "version": "6.0.5"
+      "version": "6.0.8"
     },
     {
       "author": "hsanjuan",
@@ -33,9 +33,9 @@
     },
     {
       "author": "hsanjuan",
-      "hash": "QmPurFtJHejs1FoHVz4kn54be5XEg4Mb19MCzrpfCpRvwJ",
+      "hash": "QmcmV4wfniA3HJMpmfeMdnvSxADwN7XGpte1DFiQBi7GN2",
       "name": "go-libp2p-gostream",
-      "version": "0.0.11"
+      "version": "0.0.12"
     }
   ],
   "gxVersion": "0.10.0",
@@ -43,6 +43,6 @@
   "license": "MIT",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.2.10"
+  "version": "1.2.11"
 }
 
