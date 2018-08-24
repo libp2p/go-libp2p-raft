@@ -6,7 +6,7 @@ deps: gx
 	gx --verbose install --global
 	gx-go rewrite
 test: deps
-	go test -v -covermode count -coverprofile=coverage.out .
+	go test -race -v -coverprofile=coverage.txt -covermode=atomic .
 rw:
 	gx-go rewrite
 rwundo:
