@@ -9,9 +9,9 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "QmUDzeFgYrRmHL2hUB6NZmqcBVQtUzETwmFRUc9onfSSHr",
+      "hash": "QmPL3AKtiaQyYpchZceXBZhZ3MSnoGqJvLZrc7fzDTTQdJ",
       "name": "go-libp2p",
-      "version": "6.0.8"
+      "version": "6.0.19"
     },
     {
       "author": "hsanjuan",
@@ -27,15 +27,15 @@
     },
     {
       "author": "multiformats",
-      "hash": "QmewJ1Zp9Hwz5HcMd7JYjhLXwvEHTL2UBCCz3oLt1E2N5z",
+      "hash": "QmYMiyZRYDmhMr2phMc4FGrYbsyzvR751BgeobnWroiq2z",
       "name": "go-multicodec",
-      "version": "0.1.6"
+      "version": "0.1.7"
     },
     {
       "author": "hsanjuan",
-      "hash": "QmcmV4wfniA3HJMpmfeMdnvSxADwN7XGpte1DFiQBi7GN2",
+      "hash": "QmbcyFQTNdbEZjvfT1B5ZoCcLqvrCJqnaQDMiWHgkaiJor",
       "name": "go-libp2p-gostream",
-      "version": "0.0.12"
+      "version": "0.0.16"
     }
   ],
   "gxVersion": "0.10.0",
@@ -43,6 +43,6 @@
   "license": "MIT",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.2.12"
+  "version": "1.2.13"
 }
 

@@ -67,9 +67,11 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 	if err := decodeOp(rlog.Data, &fsm.opWrap); err != nil {
 		// maybe it is a standard rollback
 		rollbackOp := opWrapper{consensus.Op(&stateOp{fsm.stateWrap.State})}
-		err := decodeOp(rlog.Data, &rollbackOp)
-		if err != nil {
+		err2 := decodeOp(rlog.Data, &rollbackOp)
+		if err2 != nil { // print original error
 			logger.Error("error decoding op: ", err)
+			logger.Error("error decoding rollback: ", err2)
+			logger.Errorf("%+v", rlog.Data)
 			fsm.inconsistent = true
 			return nil
 		}
