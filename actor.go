@@ -43,7 +43,7 @@ func (actor *Actor) SetState(newState consensus.State) (consensus.State, error) 
 	if ok {
 		return actor.commitOp(op)
 	}
-	return actor.commitOp(stateOp{newState})
+	return actor.commitOp(&stateOp{newState})
 }
 
 // commitOp actually does the job of setting the state, which is simply
@@ -59,7 +59,7 @@ func (actor *Actor) commitOp(op consensus.Op) (consensus.State, error) {
 		return nil, errors.New("this actor is not the leader")
 	}
 
-	bs, err := encodeOp(opWrapper{Op: op})
+	bs, err := encodeOp(op)
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,9 @@
 package libp2praft
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"testing"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
@@ -11,12 +13,14 @@ type marshable struct {
 	A string
 }
 
-func (m *marshable) Marshal() ([]byte, error) {
-	return json.Marshal(m)
+func (m *marshable) Marshal(w io.Writer) error {
+	enc := json.NewEncoder(w)
+	return enc.Encode(m)
 }
 
-func (m *marshable) Unmarshal(d []byte) error {
-	return json.Unmarshal(d, m)
+func (m *marshable) Unmarshal(r io.Reader) error {
+	dec := json.NewDecoder(r)
+	return dec.Decode(m)
 }
 
 type testState struct {
@@ -29,18 +33,19 @@ type simple struct {
 	D int
 }
 
-func TestEncodeDecodeSnapshot(t *testing.T) {
+func TestEncodeDecodeSnapshot_Marshable(t *testing.T) {
 	m := &marshable{A: "testing"}
-	res, err := EncodeSnapshot(m)
+
+	var buf bytes.Buffer
+	err := EncodeSnapshot(m, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(res) != `{"A":"testing"}` {
-		t.Fatal("expected json encoding: ", res)
+	if string(buf.Bytes()) != `{"A":"testing"}`+"\n" {
+		t.Fatal("expected json encoding: ", string(buf.Bytes()))
 	}
-	t.Log(string(res))
 	m2 := &marshable{}
-	err = DecodeSnapshot(res, consensus.State(m2))
+	err = DecodeSnapshot(consensus.State(m2), &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,22 +53,26 @@ func TestEncodeDecodeSnapshot(t *testing.T) {
 		t.Fatal("bad marshable decoding")
 	}
 
+}
+
+func TestEncodeDecodeSnapshot(t *testing.T) {
+	var buf bytes.Buffer
 	um := &simple{D: 25}
-	res2, err := EncodeSnapshot(um)
+	err := EncodeSnapshot(um, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 	um2 := &simple{}
-	err = DecodeSnapshot(res2, um2)
+	err = DecodeSnapshot(um2, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if um2.D != um.D {
 		t.Fatal("bad unmarshable decoding")
 	}
-}
 
-func TestEncodeDecodeState(t *testing.T) {
+	buf.Reset()
+
 	st := &testState{
 		A: 5,
 		B: "hola",
@@ -72,14 +81,14 @@ func TestEncodeDecodeState(t *testing.T) {
 		},
 	}
 
-	bytes, err := encodeState(stateWrapper{st})
+	err = EncodeSnapshot(st, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	stmp := consensus.State(&testState{})
 
-	err = decodeState(bytes, &stateWrapper{stmp})
+	err = DecodeSnapshot(stmp, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}

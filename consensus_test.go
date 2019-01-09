@@ -135,10 +135,10 @@ func TestOpLog(t *testing.T) {
 	peer1, peer2, pids := makeTwoPeers(t)
 	defer peer1.Close()
 	defer peer2.Close()
-	raft1, opLog1, tr1 := makeTestingRaft(t, peer1, pids, testOperation{})
+	raft1, opLog1, tr1 := makeTestingRaft(t, peer1, pids, &testOperation{})
 	defer shutdown(t, raft1)
 	defer tr1.Close()
-	raft2, opLog2, tr2 := makeTestingRaft(t, peer2, pids, testOperation{})
+	raft2, opLog2, tr2 := makeTestingRaft(t, peer2, pids, &testOperation{})
 	defer shutdown(t, raft2)
 	defer tr2.Close()
 	defer os.RemoveAll(raftTmpFolder)
@@ -151,13 +151,13 @@ func TestOpLog(t *testing.T) {
 	waitForLeader(t, raft1)
 
 	testCommitOps := func(opLog *Consensus) {
-		op := testOperation{"I have "}
+		op := &testOperation{"I have "}
 		opLog.CommitOp(op)
-		op = testOperation{"appended "}
+		op = &testOperation{"appended "}
 		opLog.CommitOp(op)
-		op = testOperation{"this sentence "}
+		op = &testOperation{"this sentence "}
 		opLog.CommitOp(op)
-		op = testOperation{"to the state Msg."}
+		op = &testOperation{"to the state Msg."}
 		opLog.CommitOp(op)
 	}
 
@@ -232,10 +232,10 @@ func TestBadApplyAt(t *testing.T) {
 	peer1, peer2, pids := makeTwoPeers(t)
 	defer peer1.Close()
 	defer peer2.Close()
-	raft1, opLog1, tr1 := makeTestingRaft(t, peer1, pids, badOp{})
+	raft1, opLog1, tr1 := makeTestingRaft(t, peer1, pids, &badOp{})
 	defer shutdown(t, raft1)
 	defer tr1.Close()
-	raft2, opLog2, tr2 := makeTestingRaft(t, peer2, pids, badOp{})
+	raft2, opLog2, tr2 := makeTestingRaft(t, peer2, pids, &badOp{})
 	defer shutdown(t, raft2)
 	defer tr2.Close()
 	defer os.RemoveAll(raftTmpFolder)
