@@ -95,9 +95,7 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 		return nil, errors.New("cannot snapshot inconsistent state")
 	}
 
-	return &fsmSnapshot{
-		fsm: fsm,
-	}, nil
+	return &fsmSnapshot{fsm: fsm}, nil
 }
 
 // Restore takes a snapshot and sets the current state from it.
@@ -176,8 +174,7 @@ func (snap *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 		sink.Cancel()
 		return err
 	}
-	sink.Close()
-	return nil
+	return sink.Close()
 }
 
 func (snap *fsmSnapshot) Release() {}

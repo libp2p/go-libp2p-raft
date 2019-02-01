@@ -22,8 +22,7 @@ func decodeOp(bs []byte, op consensus.Op) (err error) {
 }
 
 func encode(v interface{}, w io.Writer) error {
-	marshable, ok := v.(Marshable)
-	if ok {
+	if marshable, ok := v.(Marshable); ok {
 		return marshable.Marshal(w)
 	}
 
@@ -33,8 +32,7 @@ func encode(v interface{}, w io.Writer) error {
 }
 
 func decode(v interface{}, r io.Reader) error {
-	marshable, ok := v.(Marshable)
-	if ok {
+	if marshable, ok := v.(Marshable); ok {
 		return marshable.Unmarshal(r)
 	}
 

@@ -67,9 +67,9 @@ func (sop *stateOp) Unmarshal(r io.Reader) error {
 // GetCurrentState() will return an error until a state is agreed upon. Only
 // states submitted via CommitState() are agreed upon.
 //
-// The state can optionally implement the Marshable interface. The
-// methods will be used to serialize and deserialize Raft snapshots. By
-// default, the state is [de]serialized using Msgpack.
+// The state can optionally implement the Marshable interface. The methods
+// will be used to serialize and deserialize Raft snapshots. If Marshable is
+// not implemented, the state will be [de]serialized using Msgpack.
 //
 // We recommend using OpLog when handling very big states, as otherwise the
 // full state will need to be dump into memory on every commit, before being
