@@ -2,6 +2,7 @@ package libp2praft
 
 import (
 	"errors"
+	"io"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
 )
@@ -16,18 +17,22 @@ type Consensus struct {
 	actor consensus.Actor
 }
 
-// MarshableState is an interface to be implemented by those States that
-// wish to choose their serialization format for Raft snapshots.
-// libp2praft will check if the consensus.State it is working with
-// implements the MarshableState interface and, if so, will call Marshal()
-// and Unmarshal() when doing snapshots and restoring them. Otherwise,
-// a default serialization strategy will be used.
-//
-// MarshableState is useful to allow the user-provided consensus.State to
-// decide which format Raft snapshots use.
-type MarshableState interface {
-	Marshal() ([]byte, error)
-	Unmarshal([]byte) error
+// Marshable is an interface to be implemented by consensus.States and
+// consensus.Op objects that wish to choose their serialization format for
+// Raft snapshots.  When needing to serialize States or Ops, Marhsal and
+// Unmarshal methods will be used when provided. Otherwise, a default
+// serialization strategy will be used (using Msgpack).
+type Marshable interface {
+	// Marshal serializes the state and writes it in the Writer.
+	Marshal(io.Writer) error
+	// Unmarshal deserializes the state from the given Reader. The
+	// unmarshaled object must fully replace the original data. We
+	// recommend that Unmarshal errors when the object being deserialized
+	// produces a non-consistent result (for example by trying to
+	// deserialized a struct with wrong fields onto a different struct.
+	// Rollback operations will attempt to deserialize State objects on Op
+	// objects first, thus this case must error.
+	Unmarshal(io.Reader) error
 }
 
 // stateOp: A Consensus is a particular case of OpLogConsensus where the
@@ -40,8 +45,18 @@ type stateOp struct {
 
 // ApplyTo just returns the state in the operation and discards the
 // "old" one.
-func (sop stateOp) ApplyTo(st consensus.State) (consensus.State, error) {
+func (sop *stateOp) ApplyTo(st consensus.State) (consensus.State, error) {
 	return sop.State, nil
+}
+
+// use the underlying state Marshaling
+func (sop *stateOp) Marshal(w io.Writer) error {
+	return EncodeSnapshot(sop.State, w)
+}
+
+// use the underlying state Unmarshaling
+func (sop *stateOp) Unmarshal(r io.Reader) error {
+	return DecodeSnapshot(sop.State, r)
 }
 
 // NewConsensus returns a new consensus. The state is provided so that
@@ -51,8 +66,16 @@ func (sop stateOp) ApplyTo(st consensus.State) (consensus.State, error) {
 // Note that this initial state is not agreed upon in the cluster and that
 // GetCurrentState() will return an error until a state is agreed upon. Only
 // states submitted via CommitState() are agreed upon.
+//
+// The state can optionally implement the Marshable interface. The methods
+// will be used to serialize and deserialize Raft snapshots. If Marshable is
+// not implemented, the state will be [de]serialized using Msgpack.
+//
+// We recommend using OpLog when handling very big states, as otherwise the
+// full state will need to be dump into memory on every commit, before being
+// sent on the wire as a single Raft log entry.
 func NewConsensus(state consensus.State) *Consensus {
-	return NewOpLog(state, stateOp{State: state})
+	return NewOpLog(state, &stateOp{State: state})
 }
 
 // NewOpLog returns a new OpLog. Because the State and the Ops
@@ -67,11 +90,19 @@ func NewConsensus(state consensus.State) *Consensus {
 // the operations in the log can be or were successfully applied to it
 // (with Op.ApplyTo()).
 // See the notes in CommitOp() for more information.
+//
+// The state and the op can optionally implement the Marshable interface
+// which allows user-provided object to decide how they are serialized
+// and deserialized.
+//
+// We recommend keeping operations as small as possible. Note that operations
+// need to be fully serialized copied on memory before being sent (due to Raft
+// requirements).
 func NewOpLog(state consensus.State, op consensus.Op) *Consensus {
 	return &Consensus{
 		fsm: &FSM{
-			stateWrap:    stateWrapper{state},
-			opWrap:       opWrapper{op},
+			state:        state,
+			op:           op,
 			initialized:  false,
 			inconsistent: false,
 			subscriberCh: nil,
@@ -138,13 +169,16 @@ func (opLog *Consensus) GetLogHead() (consensus.State, error) {
 //
 // Note that only the Raft leader can commit a state.
 func (c *Consensus) CommitState(state consensus.State) (consensus.State, error) {
-	return c.CommitOp(stateOp{state})
+	return c.CommitOp(&stateOp{state})
 }
 
 // Rollback hammers the provided state into the system. It does not un-do any
 // operations nor checks that the given state was previously agreed-upon. A
 // special rollback operation gets added to the log, like any other operation.
 // A successful rollback marks an inconsistent state as valid again.
+//
+// Note that the full state needs to be loaded onto memory (like an operation)
+// so this is potentially dangerous with very large states.
 func (opLog *Consensus) Rollback(state consensus.State) error {
 	_, err := opLog.CommitState(state)
 	return err

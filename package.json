@@ -26,16 +26,16 @@
       "version": "1.0.0"
     },
     {
-      "author": "multiformats",
-      "hash": "QmYMiyZRYDmhMr2phMc4FGrYbsyzvR751BgeobnWroiq2z",
-      "name": "go-multicodec",
-      "version": "0.1.7"
-    },
-    {
       "author": "hsanjuan",
       "hash": "QmRWCLnGnvf2SxoPRFxbqfH9FxfzNjgpihvDtL6WM5X478",
       "name": "go-libp2p-gostream",
       "version": "0.0.21"
+    },
+    {
+      "author": "ugorji",
+      "hash": "QmVTAmbCaPqdfbmpWDCJMQNFxbyJoG2USFsumXmTWY5LFp",
+      "name": "go-codec",
+      "version": "2017.10.18"
     }
   ],
   "gxVersion": "0.10.0",
@@ -43,6 +43,6 @@
   "license": "MIT",
   "name": "go-libp2p-raft",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "1.2.15"
+  "version": "1.2.16"
 }
 

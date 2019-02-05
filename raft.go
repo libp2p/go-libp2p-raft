@@ -15,20 +15,19 @@
 // go-libp2p-consensus interface does not make many assumptions
 // about them (consensus.State being an empty interface).
 //
-// In order for go-libp2p-raft to work properly, instances of
-// consensus.State and consensus.Op are going to be serialized
-// and transmitted between nodes. This imposes limitations on
-// how these instances look like.
+// Raft will need to send serialized version of the state and the operation
+// objects. Default serialization uses MsgPack and requires that relevant
+// fields are exported. Unexported fields will not be serialized and therefore
+// not received in other nodes. Their local value will never change
+// either. This includes the fields from children structs etc.  Therefore, it
+// is recommended to simplify user defined types like consensus.Op and
+// consensus.State as much as possible and declare all relevant fields as
+// exported.
 //
-// Any consensus.State or consensus.Op is expected any relevant
-// fields as exported fields. Unexported fields are not serialized,
-// they are not transmitted, not received and deserialized
-// in other nodes. Unexported fields stay at the value provided by
-// the state and op initializers in the NewConsensus() or NewOpLog().
-// This includes the fields from children structs. Therefore,
-// it is recommended to simplify user defined types like consensus.Op
-// and consensus.State as much as possible and declare all
-// relevant fields as exported.
+// Alternative, it is possible to use a custom serialization and
+// deserialization mechanism by having consensus.State and consensus.Op
+// implement the Marshable interface. This provides full control about
+// how things are sent on the wire.
 //
 // A consensus.Op ApplyTo() operation may return an error. This
 // means that, while the operation is agreed-upon, the resulting

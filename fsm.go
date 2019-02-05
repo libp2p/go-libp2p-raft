@@ -3,12 +3,11 @@ package libp2praft
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"sync"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
 
-	"github.com/hashicorp/raft"
+	raft "github.com/hashicorp/raft"
 )
 
 // MaxSubscriberCh indicates how much buffering the subscriber channel
@@ -19,16 +18,6 @@ var MaxSubscriberCh = 128
 // protocol
 var ErrNoState = errors.New("no state has been agreed upon yet")
 
-// a concrete type to facilitate serialization etc as doing it
-// direclty on interfaces makes trouble
-type stateWrapper struct {
-	State consensus.State
-}
-
-type opWrapper struct {
-	Op consensus.Op
-}
-
 // FSM implements a minimal raft.FSM that holds a generic consensus.State
 // and applies generic Ops to it. The state can be serialized/deserialized,
 // snappshotted and restored.
@@ -36,8 +25,8 @@ type opWrapper struct {
 // Please use the value returned by Consensus.FSM() to initialize Raft.
 // Do not use this object directly.
 type FSM struct {
-	stateWrap    stateWrapper
-	opWrap       opWrapper
+	state        consensus.State
+	op           consensus.Op
 	initialized  bool
 	inconsistent bool
 
@@ -64,10 +53,10 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 
 	var newState consensus.State
 
-	if err := decodeOp(rlog.Data, &fsm.opWrap); err != nil {
+	if err := decodeOp(rlog.Data, fsm.op); err != nil {
 		// maybe it is a standard rollback
-		rollbackOp := opWrapper{consensus.Op(&stateOp{fsm.stateWrap.State})}
-		err2 := decodeOp(rlog.Data, &rollbackOp)
+		rollbackOp := consensus.Op(&stateOp{fsm.state})
+		err2 := decodeOp(rlog.Data, rollbackOp)
 		if err2 != nil { // print original error
 			logger.Error("error decoding op: ", err)
 			logger.Error("error decoding rollback: ", err2)
@@ -76,29 +65,27 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 			return nil
 		}
 		//fmt.Printf("%+v\n", rollbackOp)
-		castedRollback := rollbackOp.Op.(*stateOp)
+		castedRollback := rollbackOp.(*stateOp)
 		newState = castedRollback.State
 		fsm.inconsistent = false
 	} else {
-		//fmt.Printf("%+v\n", fsm.opWrapper)
-		newState, err = fsm.opWrap.Op.ApplyTo(fsm.stateWrap.State)
+		//fmt.Printf("%+v\n", fsm.op)
+		newState, err = fsm.op.ApplyTo(fsm.state)
 		if err != nil {
 			logger.Error("error applying Op to State")
 			fsm.inconsistent = true
 			return nil
 		}
 	}
-	fsm.stateWrap.State = newState
+	fsm.state = newState
 	fsm.initialized = true
 
 	fsm.updateSubscribers()
-	return fsm.stateWrap.State
+	return fsm.state
 }
 
 // Snapshot encodes the current state so that we can save a snapshot.
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
-	fsm.mux.Lock()
-	defer fsm.mux.Unlock()
 	if !fsm.initialized {
 		logger.Error("tried to snapshot uninitialized state")
 		return nil, errors.New("cannot snapshot unitialized state")
@@ -108,27 +95,17 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 		return nil, errors.New("cannot snapshot inconsistent state")
 	}
 
-	// Encode the state
-	bytes, err := EncodeSnapshot(fsm.stateWrap.State)
-	if err != nil {
-		return nil, err
-	}
-
-	var snap fsmSnapshot = bytes
-	return snap, nil
+	return &fsmSnapshot{fsm: fsm}, nil
 }
 
 // Restore takes a snapshot and sets the current state from it.
 func (fsm *FSM) Restore(reader io.ReadCloser) error {
-	snapBytes, err := ioutil.ReadAll(reader)
-	if err != nil {
-		logger.Errorf("error reading snapshot: %s", err)
-		return err
-	}
-
+	defer reader.Close()
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if err := DecodeSnapshot(snapBytes, fsm.stateWrap.State); err != nil {
+
+	err := DecodeSnapshot(fsm.state, reader)
+	if err != nil {
 		logger.Errorf("error decoding snapshot: %s", err)
 		return err
 	}
@@ -167,7 +144,7 @@ func (fsm *FSM) getState() (consensus.State, error) {
 	if fsm.inconsistent {
 		return nil, errors.New("the state on this node is not consistent")
 	}
-	return fsm.stateWrap.State, nil
+	return fsm.state, nil
 }
 
 func (fsm *FSM) updateSubscribers() {
@@ -184,16 +161,20 @@ func (fsm *FSM) updateSubscribers() {
 
 // fsmSnapshot implements the hashicorp/raft interface and allows to serialize a
 // state into a byte slice that can be used as a snapshot of the system.
-type fsmSnapshot []byte
+type fsmSnapshot struct {
+	fsm *FSM
+}
 
-// Persist writes the snapshot (a serialized state) to a raft.SnapshotSink
-func (fsms fsmSnapshot) Persist(sink raft.SnapshotSink) error {
-	_, err := sink.Write(fsms)
+// Persist writes the snapshot (a serialized state) to a raft.SnapshotSink.
+func (snap *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
+	snap.fsm.mux.Lock()
+	defer snap.fsm.mux.Unlock()
+	err := EncodeSnapshot(snap.fsm.state, sink)
 	if err != nil {
+		sink.Cancel()
 		return err
 	}
 	return sink.Close()
 }
 
-func (fsms fsmSnapshot) Release() {
-}
+func (snap *fsmSnapshot) Release() {}
