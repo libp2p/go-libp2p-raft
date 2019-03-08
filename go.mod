@@ -13,6 +13,10 @@ require (
 	github.com/libp2p/go-libp2p-peer v0.0.1
 	github.com/libp2p/go-libp2p-peerstore v0.0.1
 	github.com/libp2p/go-libp2p-protocol v0.0.1
+	github.com/mailru/easyjson v0.0.0-20190221075403-6243d8e04c3f // indirect
 	github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c // indirect
-	github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
+	github.com/philhofer/fwd v1.0.0 // indirect
+	github.com/pquerna/ffjson v0.0.0-20181028064349-e517b90714f7 // indirect
+	github.com/tinylib/msgp v1.1.0 // indirect
+	github.com/ugorji/go v0.0.0-20171015030454-f26fc641ec9d
 )
