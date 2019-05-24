@@ -37,7 +37,7 @@ func (o testOperation) ApplyTo(s consensus.State) (consensus.State, error) {
 // wait 10 seconds for a leader.
 func waitForLeader(t *testing.T, r *raft.Raft) {
 	obsCh := make(chan raft.Observation, 1)
-	observer := raft.NewObserver(obsCh, true, nil)
+	observer := raft.NewObserver(obsCh, false, nil)
 	r.RegisterObserver(observer)
 	defer r.DeregisterObserver(observer)
 
