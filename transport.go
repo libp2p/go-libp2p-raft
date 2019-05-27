@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
+
 	"github.com/hashicorp/raft"
 	gostream "github.com/hsanjuan/go-libp2p-gostream"
-	host "github.com/libp2p/go-libp2p-host"
-	peer "github.com/libp2p/go-libp2p-peer"
-	protocol "github.com/libp2p/go-libp2p-protocol"
 )
 
 const RaftProtocol protocol.ID = "/raft/1.0.0/rpc"

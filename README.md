@@ -4,7 +4,7 @@
 [![](https://img.shields.io/badge/project-libp2p-yellow.svg?style=flat-square)](https://libp2p.io)
 [![](https://img.shields.io/badge/freenode-%23libp2p-yellow.svg?style=flat-square)](http://webchat.freenode.net/?channels=%23libp2p)
 [![GoDoc](https://godoc.org/github.com/libp2p/go-libp2p-raft?status.svg)](https://godoc.org/github.com/libp2p/go-libp2p-raft)
-[![Build Status](https://travis-ci.org/libp2p/go-libp2p-raft.svg?branch=master)](https://travis-ci.org/libp2p/go-libp2p-raft)
+[![Build Status](https://travis-ci.com/libp2p/go-libp2p-raft.svg?branch=master)](https://travis-ci.com/libp2p/go-libp2p-raft)
 [![codecov](https://codecov.io/gh/libp2p/go-libp2p-raft/branch/master/graph/badge.svg)](https://codecov.io/gh/libp2p/go-libp2p-raft)
 [![Discourse posts](https://img.shields.io/discourse/https/discuss.libp2p.io/posts.svg)](https://discuss.libp2p.io)
 
@@ -40,24 +40,11 @@ In short, `go-libp2p-raft`:
 
 ## Install
 
-`go-libp2p-raft` works like a regular Go module:
-
-Fetch with:
-
-```
-> go get -u github.com/libp2p/go-libp2p-raft
-```
-
-You can use the [Gx](https://github.com/whyrusleeping/gx)-pinned dependencies running:
-
-```
-> make
-```
+`go-libp2p-raft` works like a regular Go library and uses Go modules for depdendency management:
 
 ## Usage
 
 The documentation and examples for this module can be found in [godoc.org/github.com/libp2p/go-libp2p-raft](https://godoc.org/github.com/libp2p/go-libp2p-raft).
-
 
 ## Contribute
 
