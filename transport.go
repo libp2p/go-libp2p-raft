@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/hashicorp/raft"
-	gostream "github.com/hsanjuan/go-libp2p-gostream"
+	gostream "github.com/libp2p/go-libp2p-gostream"
 )
 
 const RaftProtocol protocol.ID = "/raft/1.0.0/rpc"
