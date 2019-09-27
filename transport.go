@@ -1,6 +1,7 @@
 package libp2praft
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -73,7 +74,9 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 		return nil, err
 	}
 
-	return gostream.Dial(sl.host, pid, RaftProtocol)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return gostream.Dial(ctx, sl.host, pid, RaftProtocol)
 }
 
 func (sl *streamLayer) Accept() (net.Conn, error) {
