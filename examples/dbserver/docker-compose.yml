@@ -1,0 +1,21 @@
+version: '3.4'
+
+services:
+  raft0:
+    container_name: raft0
+    image: raft-dbserver:latest
+    environment:
+      KEY: "CAESQK5+ebHhDlkb7EjEzuyDs4Uj1y5M2T5719THXNKWtBKf3hUSzVLkzWDtdaCSU3PzaW1UYJ3nBLqjaFhDkf2Ac2c="
+      PORT: "6665"
+      VOTER: 1
+    ports:
+      - "127.0.0.1:6666:6666"
+  rafts:
+    deploy:
+      replicas: 1
+    image: raft-dbserver:latest
+    depends_on:
+      - raft0
+    environment:
+      PORT: "6665"
+      BOOTSTRAP: "/dns4/raft0/tcp/6666"
