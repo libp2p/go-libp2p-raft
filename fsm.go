@@ -14,10 +14,6 @@ import (
 // has.
 var MaxSubscriberCh = 128
 
-// ErrNoState is returned when no state has been agreed upon by the consensus
-// protocol
-var ErrNoState = errors.New("no state has been agreed upon yet")
-
 // FSM implements a minimal raft.FSM that holds a generic consensus.State
 // and applies generic Ops to it. The state can be serialized/deserialized,
 // snappshotted and restored.
@@ -138,9 +134,6 @@ func (fsm *FSM) unsubscribe() {
 func (fsm *FSM) getState() (consensus.State, error) {
 	fsm.mux.Lock()
 	defer fsm.mux.Unlock()
-	if !fsm.initialized {
-		return nil, ErrNoState
-	}
 	if fsm.inconsistent {
 		return nil, errors.New("the state on this node is not consistent")
 	}

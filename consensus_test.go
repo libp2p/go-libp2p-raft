@@ -51,8 +51,8 @@ func TestNewConsensus(t *testing.T) {
 	con := NewConsensus(state)
 
 	st, err := con.GetCurrentState()
-	if st != nil || err == nil {
-		t.Error("GetCurrentState() should error if state is not valid")
+	if err != nil {
+		t.Error("GetCurrentState() should not error if state is empty")
 	}
 
 	st, err = con.CommitState(state)

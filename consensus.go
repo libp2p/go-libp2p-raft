@@ -144,11 +144,11 @@ func (c *Consensus) GetCurrentState() (consensus.State, error) {
 // Inconsistent states can be rescued using Rollback().
 // The underlying object to the returned State will be the one provided
 // during initialization.
-func (opLog *Consensus) CommitOp(op consensus.Op) (consensus.State, error) {
-	if opLog.actor == nil {
+func (c *Consensus) CommitOp(op consensus.Op) (consensus.State, error) {
+	if c.actor == nil {
 		return nil, errors.New("no actor set to commit the new state")
 	}
-	newSt, err := opLog.actor.SetState(op)
+	newSt, err := c.actor.SetState(op)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +159,8 @@ func (opLog *Consensus) CommitOp(op consensus.Op) (consensus.State, error) {
 // return an error when no state has been agreed upon or when the state
 // cannot be ensured to be that on which the rest of the system has
 // agreed-upon.
-func (opLog *Consensus) GetLogHead() (consensus.State, error) {
-	return opLog.fsm.getState()
+func (c *Consensus) GetLogHead() (consensus.State, error) {
+	return c.fsm.getState()
 }
 
 // CommitState pushes a new state to the system and returns
@@ -179,8 +179,8 @@ func (c *Consensus) CommitState(state consensus.State) (consensus.State, error) 
 //
 // Note that the full state needs to be loaded onto memory (like an operation)
 // so this is potentially dangerous with very large states.
-func (opLog *Consensus) Rollback(state consensus.State) error {
-	_, err := opLog.CommitState(state)
+func (c *Consensus) Rollback(state consensus.State) error {
+	_, err := c.CommitState(state)
 	return err
 }
 

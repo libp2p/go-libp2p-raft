@@ -11,7 +11,7 @@ import (
 )
 
 // SetStateTimeout specifies how long before giving up on setting a state
-var SetStateTimeout time.Duration = 1 * time.Second
+var SetStateTimeout = 1 * time.Second
 
 // Actor implements a consensus.Actor, allowing to SetState
 // in a libp2p Consensus system. In order to do this it uses hashicorp/raft
