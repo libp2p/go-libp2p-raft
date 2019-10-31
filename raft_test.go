@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"testing"
 	"time"
 
@@ -246,22 +245,10 @@ func Example_consensus() {
 	config3.Logger = nil
 	config3.LocalID = raft.ServerID(peer3.ID().Pretty())
 
-	// Create snapshotStores
-	snapshots1, err := raft.NewFileSnapshotStore("example_data1", 3, nil)
-	if err != nil {
-		log.Fatal("file snapshot store:", err)
-	}
-	snapshots2, err := raft.NewFileSnapshotStore("example_data2", 3, nil)
-	if err != nil {
-		log.Fatal("file snapshot store:", err)
-	}
-	snapshots3, err := raft.NewFileSnapshotStore("example_data3", 3, nil)
-	if err != nil {
-		log.Fatal("file snapshot store:", err)
-	}
-	defer os.RemoveAll("example_data1")
-	defer os.RemoveAll("example_data2")
-	defer os.RemoveAll("example_data3")
+	// Create snapshotStores. Use FileSnapshotStore in production.
+	snapshots1 := raft.NewInmemSnapshotStore()
+	snapshots2 := raft.NewInmemSnapshotStore()
+	snapshots3 := raft.NewInmemSnapshotStore()
 
 	// Create the InmemStores for use as log store and stable store.
 	logStore1 := raft.NewInmemStore()
