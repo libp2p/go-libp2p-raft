@@ -10,3 +10,5 @@ require (
 	github.com/libp2p/go-libp2p-peerstore v0.1.3
 	github.com/ugorji/go/codec v1.1.7
 )
+
+go 1.13
