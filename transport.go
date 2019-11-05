@@ -3,7 +3,6 @@ package libp2praft
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -95,18 +94,10 @@ type addrProvider struct {
 	h host.Host
 }
 
-// ServerAddr takes a raft.ServerID and checks that it is a valid PeerID and
-// that our libp2p host has at least one address to contact it. It then returns
-// the ServerID as ServerAddress. On all other cases it will throw an error.
+// ServerAddr takes a raft.ServerID and returns it as a ServerAddress.  libp2p
+// will either know how to contact that peer ID or try to find it using the
+// configured routing mechanism.
 func (ap *addrProvider) ServerAddr(id raft.ServerID) (raft.ServerAddress, error) {
-	pid, err := peer.IDB58Decode(string(id))
-	if err != nil {
-		return "", fmt.Errorf("bad peer ID: %s", id)
-	}
-	addrs := ap.h.Peerstore().Addrs(pid)
-	if len(addrs) == 0 {
-		return "", fmt.Errorf("libp2p host does not know peer %s", id)
-	}
 	return raft.ServerAddress(id), nil
 
 }
