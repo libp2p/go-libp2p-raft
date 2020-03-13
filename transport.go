@@ -33,7 +33,7 @@ func (fw *logForwarder) Write(p []byte) (n int, err error) {
 	case strings.Contains(t, "[DEBUG]"):
 		logger.Debug(strings.TrimPrefix(t, "[DEBUG] raft-net: "))
 	case strings.Contains(t, "[WARN]"):
-		logger.Warning(strings.TrimPrefix(t, "[WARN]  raft-net: "))
+		logger.Warn(strings.TrimPrefix(t, "[WARN]  raft-net: "))
 	case strings.Contains(t, "[ERR]"):
 		logger.Error(strings.TrimPrefix(t, "[ERR] raft-net: "))
 	case strings.Contains(t, "[INFO]"):
