@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
+	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	gostream "github.com/libp2p/go-libp2p-gostream"
 )
@@ -123,7 +124,7 @@ func NewLibp2pTransport(h host.Host, timeout time.Duration) (*raft.NetworkTransp
 	// streams.
 	cfg := &raft.NetworkTransportConfig{
 		ServerAddressProvider: provider,
-		Logger:                logLogger,
+		Logger:                hclog.FromStandardLogger(logLogger, &hclog.LoggerOptions{}),
 		Stream:                stream,
 		MaxPool:               0,
 		Timeout:               timeout,
