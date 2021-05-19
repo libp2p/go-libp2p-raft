@@ -69,12 +69,15 @@ func TestTransportSnapshots(t *testing.T) {
 	raftTmpFolder = "testing_tmp2"
 	defer os.RemoveAll("testing_tmp2")
 
-	raft2, c2, tr2 = makeTestingRaft(t, peer1, pids, nil)
+	raft2, _, tr2 = makeTestingRaft(t, peer1, pids, nil)
 	defer shutdown(t, raft2)
 	defer tr2.Close()
 	time.Sleep(2 * time.Second)
 
 	newst, err := c1.GetCurrentState()
+	if err != nil {
+		t.Fatal(err)
+	}
 	st := newst.(*raftState)
 	if st.Msg != "count: 4999" {
 		t.Error("state not restored correctly")

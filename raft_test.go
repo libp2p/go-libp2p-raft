@@ -12,7 +12,7 @@ import (
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 
 	"github.com/hashicorp/raft"
 )
@@ -46,7 +46,8 @@ func waitForLeader(t *testing.T, r *raft.Raft) {
 	// setting the Leader and only when the RaftState has changed.
 	// Therefore, we need a ticker.
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	ticker := time.NewTicker(time.Second / 2)
 	defer ticker.Stop()
 	for {
@@ -227,7 +228,7 @@ func Example_consensus() {
 			Address:  raft.ServerAddress(h.ID().Pretty()),
 		})
 	}
-	serversCfg := raft.Configuration{servers}
+	serversCfg := raft.Configuration{Servers: servers}
 
 	// Create Raft Configs. The Local ID is the PeerOID
 	config1 := raft.DefaultConfig()

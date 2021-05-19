@@ -7,7 +7,6 @@ require (
 	github.com/libp2p/go-libp2p-consensus v0.0.1
 	github.com/libp2p/go-libp2p-core v0.8.0
 	github.com/libp2p/go-libp2p-gostream v0.3.1
-	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/ugorji/go/codec v1.1.13
 )
 
