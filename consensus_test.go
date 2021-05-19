@@ -13,7 +13,7 @@ import (
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 )
 
 // newRandomHost returns a peer which listens on the given tcp port
@@ -255,13 +255,11 @@ func TestBadApplyAt(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	logHead1, err := opLog1.GetLogHead()
-	if err == nil {
+	if _, err := opLog1.GetLogHead(); err == nil {
 		t.Fatal("expected an error")
 	}
 
-	logHead2, err := opLog2.GetLogHead()
-	if err == nil {
+	if _, err := opLog2.GetLogHead(); err == nil {
 		t.Fatal("expected an error")
 	}
 
@@ -273,12 +271,12 @@ func TestBadApplyAt(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	logHead1, err = opLog1.GetLogHead()
+	logHead1, err := opLog1.GetLogHead()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	logHead2, err = opLog2.GetLogHead()
+	logHead2, err := opLog2.GetLogHead()
 	if err != nil {
 		t.Fatal(err)
 	}

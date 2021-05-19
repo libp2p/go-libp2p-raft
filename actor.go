@@ -88,7 +88,7 @@ func (actor *Actor) IsLeader() bool {
 func (actor *Actor) Leader() (peer.ID, error) {
 	// Leader as returned by Libp2pTransport.LocalAddr()
 	raftLeader := string(actor.Raft.Leader())
-	peerID, err := peer.IDB58Decode(raftLeader)
+	peerID, err := peer.Decode(raftLeader)
 	if err != nil {
 		return "", errors.New("leader unknown or not existing yet")
 	}

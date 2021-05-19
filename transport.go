@@ -68,7 +68,7 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 		return nil, errors.New("streamLayer not initialized")
 	}
 
-	pid, err := peer.IDB58Decode(string(address))
+	pid, err := peer.Decode(string(address))
 	if err != nil {
 		return nil, err
 	}

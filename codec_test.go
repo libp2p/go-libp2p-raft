@@ -41,8 +41,8 @@ func TestEncodeDecodeSnapshot_Marshable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(buf.Bytes()) != `{"A":"testing"}`+"\n" {
-		t.Fatal("expected json encoding: ", string(buf.Bytes()))
+	if str := buf.String(); str != `{"A":"testing"}`+"\n" {
+		t.Fatal("expected json encoding: ", str)
 	}
 	m2 := &marshable{}
 	err = DecodeSnapshot(consensus.State(m2), &buf)
