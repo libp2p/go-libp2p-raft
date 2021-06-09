@@ -1,6 +1,7 @@
 package libp2praft
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"sync"
@@ -86,6 +87,8 @@ func (fsm *FSM) Apply(rlog *raft.Log) interface{} {
 
 // Snapshot encodes the current state so that we can save a snapshot.
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
+	fsm.mux.Lock()
+	defer fsm.mux.Unlock()
 	if !fsm.initialized {
 		logger.Error("tried to snapshot uninitialized state")
 		return nil, errors.New("cannot snapshot unitialized state")
@@ -95,7 +98,13 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 		return nil, errors.New("cannot snapshot inconsistent state")
 	}
 
-	return &fsmSnapshot{fsm: fsm}, nil
+	buf := new(bytes.Buffer)
+	err := EncodeSnapshot(fsm.state, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fsmSnapshot{state: buf}, nil
 }
 
 // Restore takes a snapshot and sets the current state from it.
@@ -159,17 +168,15 @@ func (fsm *FSM) updateSubscribers() {
 	}
 }
 
-// fsmSnapshot implements the hashicorp/raft interface and allows to serialize a
-// state into a byte slice that can be used as a snapshot of the system.
+// fsmSnapshot implements the hashicorp/raft interface and stores serialized
+// state that can be used as a snapshot of the system.
 type fsmSnapshot struct {
-	fsm *FSM
+	state *bytes.Buffer
 }
 
 // Persist writes the snapshot (a serialized state) to a raft.SnapshotSink.
 func (snap *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
-	snap.fsm.mux.Lock()
-	defer snap.fsm.mux.Unlock()
-	err := EncodeSnapshot(snap.fsm.state, sink)
+	_, err := io.Copy(sink, snap.state)
 	if err != nil {
 		sink.Cancel()
 		return err
