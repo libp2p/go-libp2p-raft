@@ -10,4 +10,4 @@ require (
 	github.com/ugorji/go/codec v1.1.13
 )
 
-go 1.15
+go 1.16
