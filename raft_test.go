@@ -3,7 +3,7 @@ package libp2praft
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"testing"
 	"time"
@@ -111,7 +111,7 @@ func makeTestingRaft(t *testing.T, h host.Host, pids []peer.ID, op consensus.Op)
 	// -- Configuration
 	config := raft.DefaultConfig()
 	if raftQuiet {
-		config.LogOutput = ioutil.Discard
+		config.LogOutput = io.Discard
 		config.Logger = nil
 	}
 	config.LocalID = raft.ServerID(h.ID().Pretty())
@@ -232,17 +232,17 @@ func Example_consensus() {
 
 	// Create Raft Configs. The Local ID is the PeerOID
 	config1 := raft.DefaultConfig()
-	config1.LogOutput = ioutil.Discard
+	config1.LogOutput = io.Discard
 	config1.Logger = nil
 	config1.LocalID = raft.ServerID(peer1.ID().Pretty())
 
 	config2 := raft.DefaultConfig()
-	config2.LogOutput = ioutil.Discard
+	config2.LogOutput = io.Discard
 	config2.Logger = nil
 	config2.LocalID = raft.ServerID(peer2.ID().Pretty())
 
 	config3 := raft.DefaultConfig()
-	config3.LogOutput = ioutil.Discard
+	config3.LogOutput = io.Discard
 	config3.Logger = nil
 	config3.LocalID = raft.ServerID(peer3.ID().Pretty())
 
