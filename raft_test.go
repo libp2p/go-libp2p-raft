@@ -10,9 +10,9 @@ import (
 
 	libp2p "github.com/libp2p/go-libp2p"
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 
 	"github.com/hashicorp/raft"
 )
@@ -170,7 +170,6 @@ func Example_consensus() {
 	// error handling ommitted
 	newPeer := func(listenPort int) host.Host {
 		h, _ := libp2p.New(
-			context.Background(),
 			libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort)),
 		)
 		return h

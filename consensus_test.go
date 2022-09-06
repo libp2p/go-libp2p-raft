@@ -1,7 +1,6 @@
 package libp2praft
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -11,16 +10,15 @@ import (
 
 	libp2p "github.com/libp2p/go-libp2p"
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 )
 
 // newRandomHost returns a peer which listens on the given tcp port
 // on localhost.
 func newRandomHost(listenPort int, t *testing.T) host.Host {
 	h, err := libp2p.New(
-		context.Background(),
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort)),
 	)
 	if err != nil {
