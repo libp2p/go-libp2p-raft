@@ -5,7 +5,7 @@ import (
 	"time"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	raft "github.com/hashicorp/raft"
 )
