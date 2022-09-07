@@ -3,45 +3,140 @@ package libp2praft
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net"
-	"strings"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/raft"
+	logging "github.com/ipfs/go-log/v2"
+	gostream "github.com/libp2p/go-libp2p-gostream"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-
-	"github.com/hashicorp/raft"
-	gostream "github.com/libp2p/go-libp2p-gostream"
 )
 
 const RaftProtocol protocol.ID = "/raft/1.0.0/rpc"
 
-// This provides a custom logger for the network transport
-// which intercepts messages and rewrites them to our own logger
-type logForwarder struct{}
+var raftLogger = logging.Logger("raftlib")
 
-var logLogger = log.New(&logForwarder{}, "", 0)
+// this implements github.com/hashicorp/go-hclog
+type hcLogToLogger struct {
+	extraArgs []interface{}
+	name      string
+}
 
-// Write forwards to our go-log logger.
-// According to https://golang.org/pkg/log/#Logger.Output
-// it is called per line.
-func (fw *logForwarder) Write(p []byte) (n int, err error) {
-	t := strings.TrimSuffix(string(p), "\n")
-	switch {
-	case strings.Contains(t, "[DEBUG]"):
-		logger.Debug(strings.TrimPrefix(t, "[DEBUG] raft-net: "))
-	case strings.Contains(t, "[WARN]"):
-		logger.Warn(strings.TrimPrefix(t, "[WARN]  raft-net: "))
-	case strings.Contains(t, "[ERR]"):
-		logger.Error(strings.TrimPrefix(t, "[ERR] raft-net: "))
-	case strings.Contains(t, "[INFO]"):
-		logger.Info(strings.TrimPrefix(t, "[INFO] raft-net: "))
-	default:
-		logger.Debug(t)
+func (log *hcLogToLogger) formatArgs(args []interface{}) string {
+	result := ""
+	args = append(args, log.extraArgs)
+	for i := 0; i < len(args); i = i + 2 {
+		key, ok := args[i].(string)
+		if !ok {
+			continue
+		}
+		val := args[i+1]
+		result += fmt.Sprintf(" %s=%s.", key, val)
 	}
-	return len(p), nil
+	return result
+}
+
+func (log *hcLogToLogger) format(msg string, args []interface{}) string {
+	argstr := log.formatArgs(args)
+	if len(argstr) > 0 {
+		argstr = ". Args: " + argstr
+	}
+	name := log.name
+	if len(name) > 0 {
+		name += ": "
+	}
+	return name + msg + argstr
+}
+
+func (log *hcLogToLogger) Log(level hclog.Level, msg string, args ...interface{}) {
+	switch level {
+	case hclog.Trace, hclog.Debug:
+		log.Debug(msg, args)
+	case hclog.NoLevel, hclog.Info:
+		log.Info(msg, args)
+	case hclog.Warn:
+		log.Warn(msg, args)
+	case hclog.Error:
+		log.Error(msg, args)
+	default:
+		log.Warn(msg, args)
+	}
+}
+
+func (log *hcLogToLogger) Trace(msg string, args ...interface{}) {
+	raftLogger.Debug(log.format(msg, args))
+}
+
+func (log *hcLogToLogger) Debug(msg string, args ...interface{}) {
+	raftLogger.Debug(log.format(msg, args))
+}
+
+func (log *hcLogToLogger) Info(msg string, args ...interface{}) {
+	raftLogger.Info(log.format(msg, args))
+}
+
+func (log *hcLogToLogger) Warn(msg string, args ...interface{}) {
+	raftLogger.Warn(log.format(msg, args))
+}
+
+func (log *hcLogToLogger) Error(msg string, args ...interface{}) {
+	raftLogger.Error(log.format(msg, args))
+}
+
+func (log *hcLogToLogger) IsTrace() bool {
+	return true
+}
+
+func (log *hcLogToLogger) IsDebug() bool {
+	return true
+}
+
+func (log *hcLogToLogger) IsInfo() bool {
+	return true
+}
+
+func (log *hcLogToLogger) IsWarn() bool {
+	return true
+}
+
+func (log *hcLogToLogger) IsError() bool {
+	return true
+}
+
+func (log *hcLogToLogger) Name() string {
+	return log.name
+}
+
+func (log *hcLogToLogger) With(args ...interface{}) hclog.Logger {
+	return &hcLogToLogger{extraArgs: args}
+}
+
+func (log *hcLogToLogger) Named(name string) hclog.Logger {
+	return &hcLogToLogger{name: log.name + ": " + name}
+}
+
+func (log *hcLogToLogger) ResetNamed(name string) hclog.Logger {
+	return &hcLogToLogger{name: name}
+}
+
+func (log *hcLogToLogger) SetLevel(level hclog.Level) {}
+
+func (log *hcLogToLogger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
+	return nil
+}
+
+func (log *hcLogToLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
+	return nil
+}
+
+func (log *hcLogToLogger) ImpliedArgs() []interface{} {
+	return nil
 }
 
 // streamLayer an implementation of raft.StreamLayer for use
@@ -123,7 +218,7 @@ func NewLibp2pTransport(h host.Host, timeout time.Duration) (*raft.NetworkTransp
 	// streams.
 	cfg := &raft.NetworkTransportConfig{
 		ServerAddressProvider: provider,
-		Logger:                logLogger,
+		Logger:                &hcLogToLogger{},
 		Stream:                stream,
 		MaxPool:               0,
 		Timeout:               timeout,

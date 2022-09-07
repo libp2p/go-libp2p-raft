@@ -6,9 +6,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/hashicorp/raft"
 	consensus "github.com/libp2p/go-libp2p-consensus"
-
-	raft "github.com/hashicorp/raft"
 )
 
 // MaxSubscriberCh indicates how much buffering the subscriber channel
