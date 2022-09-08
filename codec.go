@@ -5,7 +5,7 @@ import (
 	"io"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	codec "github.com/ugorji/go/codec"
+	"github.com/ugorji/go/codec"
 )
 
 // encodeOp serializes an op

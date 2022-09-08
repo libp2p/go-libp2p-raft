@@ -4,14 +4,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/hashicorp/raft"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/peer"
-
-	raft "github.com/hashicorp/raft"
 )
 
 // SetStateTimeout specifies how long before giving up on setting a state
-var SetStateTimeout time.Duration = 1 * time.Second
+var SetStateTimeout = 1 * time.Second
 
 // Actor implements a consensus.Actor, allowing to SetState
 // in a libp2p Consensus system. In order to do this it uses hashicorp/raft
@@ -87,8 +86,8 @@ func (actor *Actor) IsLeader() bool {
 // error if there is no leader.
 func (actor *Actor) Leader() (peer.ID, error) {
 	// Leader as returned by Libp2pTransport.LocalAddr()
-	raftLeader := string(actor.Raft.Leader())
-	peerID, err := peer.Decode(raftLeader)
+	leaderAddr, _ := actor.Raft.LeaderWithID()
+	peerID, err := peer.Decode(string(leaderAddr))
 	if err != nil {
 		return "", errors.New("leader unknown or not existing yet")
 	}

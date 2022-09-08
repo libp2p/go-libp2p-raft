@@ -22,13 +22,13 @@ const RaftProtocol protocol.ID = "/raft/1.0.0/rpc"
 
 var raftLogger = logging.Logger("raftlib")
 
-// this implements github.com/hashicorp/go-hclog
-type hcLogToLogger struct {
+// HcLogToLogger implements github.com/hashicorp/go-hclog
+type HcLogToLogger struct {
 	extraArgs []interface{}
 	name      string
 }
 
-func (log *hcLogToLogger) formatArgs(args []interface{}) string {
+func (log *HcLogToLogger) formatArgs(args []interface{}) string {
 	result := ""
 	args = append(args, log.extraArgs)
 	for i := 0; i < len(args); i = i + 2 {
@@ -42,7 +42,7 @@ func (log *hcLogToLogger) formatArgs(args []interface{}) string {
 	return result
 }
 
-func (log *hcLogToLogger) format(msg string, args []interface{}) string {
+func (log *HcLogToLogger) format(msg string, args []interface{}) string {
 	argstr := log.formatArgs(args)
 	if len(argstr) > 0 {
 		argstr = ". Args: " + argstr
@@ -54,7 +54,7 @@ func (log *hcLogToLogger) format(msg string, args []interface{}) string {
 	return name + msg + argstr
 }
 
-func (log *hcLogToLogger) Log(level hclog.Level, msg string, args ...interface{}) {
+func (log *HcLogToLogger) Log(level hclog.Level, msg string, args ...interface{}) {
 	switch level {
 	case hclog.Trace, hclog.Debug:
 		log.Debug(msg, args)
@@ -69,73 +69,73 @@ func (log *hcLogToLogger) Log(level hclog.Level, msg string, args ...interface{}
 	}
 }
 
-func (log *hcLogToLogger) Trace(msg string, args ...interface{}) {
+func (log *HcLogToLogger) Trace(msg string, args ...interface{}) {
 	raftLogger.Debug(log.format(msg, args))
 }
 
-func (log *hcLogToLogger) Debug(msg string, args ...interface{}) {
+func (log *HcLogToLogger) Debug(msg string, args ...interface{}) {
 	raftLogger.Debug(log.format(msg, args))
 }
 
-func (log *hcLogToLogger) Info(msg string, args ...interface{}) {
+func (log *HcLogToLogger) Info(msg string, args ...interface{}) {
 	raftLogger.Info(log.format(msg, args))
 }
 
-func (log *hcLogToLogger) Warn(msg string, args ...interface{}) {
+func (log *HcLogToLogger) Warn(msg string, args ...interface{}) {
 	raftLogger.Warn(log.format(msg, args))
 }
 
-func (log *hcLogToLogger) Error(msg string, args ...interface{}) {
+func (log *HcLogToLogger) Error(msg string, args ...interface{}) {
 	raftLogger.Error(log.format(msg, args))
 }
 
-func (log *hcLogToLogger) IsTrace() bool {
+func (log *HcLogToLogger) IsTrace() bool {
 	return true
 }
 
-func (log *hcLogToLogger) IsDebug() bool {
+func (log *HcLogToLogger) IsDebug() bool {
 	return true
 }
 
-func (log *hcLogToLogger) IsInfo() bool {
+func (log *HcLogToLogger) IsInfo() bool {
 	return true
 }
 
-func (log *hcLogToLogger) IsWarn() bool {
+func (log *HcLogToLogger) IsWarn() bool {
 	return true
 }
 
-func (log *hcLogToLogger) IsError() bool {
+func (log *HcLogToLogger) IsError() bool {
 	return true
 }
 
-func (log *hcLogToLogger) Name() string {
+func (log *HcLogToLogger) Name() string {
 	return log.name
 }
 
-func (log *hcLogToLogger) With(args ...interface{}) hclog.Logger {
-	return &hcLogToLogger{extraArgs: args}
+func (log *HcLogToLogger) With(args ...interface{}) hclog.Logger {
+	return &HcLogToLogger{extraArgs: args}
 }
 
-func (log *hcLogToLogger) Named(name string) hclog.Logger {
-	return &hcLogToLogger{name: log.name + ": " + name}
+func (log *HcLogToLogger) Named(name string) hclog.Logger {
+	return &HcLogToLogger{name: log.name + ": " + name}
 }
 
-func (log *hcLogToLogger) ResetNamed(name string) hclog.Logger {
-	return &hcLogToLogger{name: name}
+func (log *HcLogToLogger) ResetNamed(name string) hclog.Logger {
+	return &HcLogToLogger{name: name}
 }
 
-func (log *hcLogToLogger) SetLevel(level hclog.Level) {}
+func (log *HcLogToLogger) SetLevel(level hclog.Level) {}
 
-func (log *hcLogToLogger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
+func (log *HcLogToLogger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
 	return nil
 }
 
-func (log *hcLogToLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
+func (log *HcLogToLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
 	return nil
 }
 
-func (log *hcLogToLogger) ImpliedArgs() []interface{} {
+func (log *HcLogToLogger) ImpliedArgs() []interface{} {
 	return nil
 }
 
@@ -218,7 +218,7 @@ func NewLibp2pTransport(h host.Host, timeout time.Duration) (*raft.NetworkTransp
 	// streams.
 	cfg := &raft.NetworkTransportConfig{
 		ServerAddressProvider: provider,
-		Logger:                &hcLogToLogger{},
+		Logger:                &HcLogToLogger{},
 		Stream:                stream,
 		MaxPool:               0,
 		Timeout:               timeout,
