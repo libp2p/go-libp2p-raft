@@ -8,13 +8,12 @@ import (
 	"testing"
 	"time"
 
-	libp2p "github.com/libp2p/go-libp2p"
+	"github.com/hashicorp/raft"
+	"github.com/libp2p/go-libp2p"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-
-	"github.com/hashicorp/raft"
 )
 
 var raftTmpFolder = "testing_tmp"
@@ -55,12 +54,12 @@ func waitForLeader(t *testing.T, r *raft.Raft) {
 		case obs := <-obsCh:
 			switch obs.Data.(type) {
 			case raft.RaftState:
-				if r.Leader() != "" {
+				if leaderAddr, _ := r.LeaderWithID(); leaderAddr != "" {
 					return
 				}
 			}
 		case <-ticker.C:
-			if r.Leader() != "" {
+			if leaderAddr, _ := r.LeaderWithID(); leaderAddr != "" {
 				return
 			}
 		case <-ctx.Done():

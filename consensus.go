@@ -49,12 +49,12 @@ func (sop *stateOp) ApplyTo(st consensus.State) (consensus.State, error) {
 	return sop.State, nil
 }
 
-// use the underlying state Marshaling
+// Marshal uses the underlying state Marshaling
 func (sop *stateOp) Marshal(w io.Writer) error {
 	return EncodeSnapshot(sop.State, w)
 }
 
-// use the underlying state Unmarshaling
+// Unmarshal uses the underlying state Unmarshaling
 func (sop *stateOp) Unmarshal(r io.Reader) error {
 	return DecodeSnapshot(sop.State, r)
 }
