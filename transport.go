@@ -20,9 +20,14 @@ import (
 
 const RaftProtocol protocol.ID = "/raft/1.0.0/rpc"
 
+// Ensure that streamLayer implements raft.StreamLayer.
+var _ raft.StreamLayer = (*streamLayer)(nil)
+
+// Ensure that HCLogToLogger implents hclog.Logger.
+var _ hclog.Logger = (*HcLogToLogger)(nil)
+
 var raftLogger = logging.Logger("raftlib")
 
-// HcLogToLogger implements github.com/hashicorp/go-hclog
 type HcLogToLogger struct {
 	extraArgs []interface{}
 	name      string
@@ -142,19 +147,21 @@ func (log *HcLogToLogger) ImpliedArgs() []interface{} {
 // streamLayer an implementation of raft.StreamLayer for use
 // with raft.NetworkTransportConfig.
 type streamLayer struct {
-	host host.Host
-	l    net.Listener
+	host     host.Host
+	l        net.Listener
+	protocol protocol.ID
 }
 
-func newStreamLayer(h host.Host) (*streamLayer, error) {
-	listener, err := gostream.Listen(h, RaftProtocol)
+func newStreamLayer(h host.Host, protocol protocol.ID) (*streamLayer, error) {
+	listener, err := gostream.Listen(h, protocol)
 	if err != nil {
 		return nil, err
 	}
 
 	return &streamLayer{
-		host: h,
-		l:    listener,
+		host:     h,
+		l:        listener,
+		protocol: protocol,
 	}, nil
 }
 
@@ -170,7 +177,7 @@ func (sl *streamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return gostream.Dial(ctx, sl.host, pid, RaftProtocol)
+	return gostream.Dial(ctx, sl.host, pid, sl.protocol)
 }
 
 func (sl *streamLayer) Accept() (net.Conn, error) {
@@ -197,13 +204,14 @@ func (ap *addrProvider) ServerAddr(id raft.ServerID) (raft.ServerAddress, error)
 
 }
 
-// type Libp2pTransport struct {
-// 	raftTrans *raft.NetworkTransport
-// }
-
 func NewLibp2pTransport(h host.Host, timeout time.Duration) (*raft.NetworkTransport, error) {
+	return NewLibp2pTransportWithProtocol(h, timeout, RaftProtocol)
+}
+
+func NewLibp2pTransportWithProtocol(h host.Host, timeout time.Duration, protocol protocol.ID) (*raft.NetworkTransport, error) {
+
 	provider := &addrProvider{h}
-	stream, err := newStreamLayer(h)
+	stream, err := newStreamLayer(h, protocol)
 	if err != nil {
 		return nil, err
 	}

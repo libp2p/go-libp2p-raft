@@ -10,7 +10,7 @@
 
 > A LibP2P wrapper for hashicorp/raft implementation.
 
-`go-libp2p-raft` implements a go-libp2p-consensus interface wrapping hashicorp/raftimplementation and providing a libp2p network transport for it.
+`go-libp2p-raft` implements a go-libp2p-consensus interface wrapping hashicorp/raft implementation and providing a libp2p network transport for it.
 
 ## Table of Contents
 
