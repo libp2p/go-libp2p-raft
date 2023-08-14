@@ -103,4 +103,4 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-go 1.19
+go 1.20
