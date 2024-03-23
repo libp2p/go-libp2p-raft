@@ -1,7 +1,7 @@
 module github.com/libp2p/go-libp2p-raft
 
 require (
-	github.com/hashicorp/go-hclog v1.3.0
+	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/raft v1.3.10
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/libp2p/go-libp2p v0.30.0
