@@ -117,10 +117,6 @@ func (log *HcLogToLogger) With(args ...interface{}) hclog.Logger {
 	return &HcLogToLogger{extraArgs: args}
 }
 
-func (l *HcLogToLogger) GetLevel() hclog.Level {
-    return hclog.LevelFromString("DEBUG")
-}
-
 func (log *HcLogToLogger) Named(name string) hclog.Logger {
 	return &HcLogToLogger{name: log.name + ": " + name}
 }
@@ -130,6 +126,10 @@ func (log *HcLogToLogger) ResetNamed(name string) hclog.Logger {
 }
 
 func (log *HcLogToLogger) SetLevel(level hclog.Level) {}
+
+func (l *HcLogToLogger) GetLevel() hclog.Level {
+	return hclog.LevelFromString("DEBUG")
+}
 
 func (log *HcLogToLogger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
 	return nil

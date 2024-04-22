@@ -91,8 +91,8 @@ func makeTestingRaft(t *testing.T, h host.Host, pids []peer.ID, op consensus.Op)
 	for i, pid := range pids {
 		servers[i] = raft.Server{
 			Suffrage: raft.Voter,
-			ID:       raft.ServerID(pid.Pretty()),
-			Address:  raft.ServerAddress(pid.Pretty()),
+			ID:       raft.ServerID(pid.String()),
+			Address:  raft.ServerAddress(pid.String()),
 		}
 	}
 	serverConfig := raft.Configuration{
@@ -113,7 +113,7 @@ func makeTestingRaft(t *testing.T, h host.Host, pids []peer.ID, op consensus.Op)
 		config.LogOutput = io.Discard
 		config.Logger = nil
 	}
-	config.LocalID = raft.ServerID(h.ID().Pretty())
+	config.LocalID = raft.ServerID(h.ID().String())
 	// --
 
 	// -- SnapshotStore
@@ -222,8 +222,8 @@ func Example_consensus() {
 	for _, h := range []host.Host{peer1, peer2, peer3} {
 		servers = append(servers, raft.Server{
 			Suffrage: raft.Voter,
-			ID:       raft.ServerID(h.ID().Pretty()),
-			Address:  raft.ServerAddress(h.ID().Pretty()),
+			ID:       raft.ServerID(h.ID().String()),
+			Address:  raft.ServerAddress(h.ID().String()),
 		})
 	}
 	serversCfg := raft.Configuration{Servers: servers}
@@ -232,17 +232,17 @@ func Example_consensus() {
 	config1 := raft.DefaultConfig()
 	config1.LogOutput = io.Discard
 	config1.Logger = nil
-	config1.LocalID = raft.ServerID(peer1.ID().Pretty())
+	config1.LocalID = raft.ServerID(peer1.ID().String())
 
 	config2 := raft.DefaultConfig()
 	config2.LogOutput = io.Discard
 	config2.Logger = nil
-	config2.LocalID = raft.ServerID(peer2.ID().Pretty())
+	config2.LocalID = raft.ServerID(peer2.ID().String())
 
 	config3 := raft.DefaultConfig()
 	config3.LogOutput = io.Discard
 	config3.Logger = nil
-	config3.LocalID = raft.ServerID(peer3.ID().Pretty())
+	config3.LocalID = raft.ServerID(peer3.ID().String())
 
 	// Create snapshotStores. Use FileSnapshotStore in production.
 	snapshots1 := raft.NewInmemSnapshotStore()
